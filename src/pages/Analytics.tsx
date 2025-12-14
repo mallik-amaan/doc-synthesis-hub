@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { PDFViewer } from '@/components/analytics/PDFViewer';
 
 // Mock sessions
 const mockSessions = [
@@ -18,20 +19,12 @@ const mockSessions = [
   { id: '3', name: 'Medical Records #103', totalDocs: 22, date: '2024-01-13' },
 ];
 
-// Mock document content
+// Sample PDF URL for demo (replace with actual PDF URLs from backend)
+const SAMPLE_PDF_URL = 'https://www.w3.org/WAI/WCAG21/Techniques/pdf/img/table-word.pdf';
+
+// Mock document content - now with PDF URL for generated doc
 const generateMockDoc = (index: number) => ({
-  generated: `This is the generated document content for document #${index + 1}. 
-  
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.
-
-Section 1: Introduction
-The purpose of this document is to demonstrate the text-to-document synthesis capabilities of the platform.
-
-Section 2: Methodology
-Various NLP techniques were employed to generate structured content from unstructured text inputs.
-
-Section 3: Results
-The synthesis process achieved a 93.2% accuracy rate in maintaining semantic consistency with the ground truth specifications.`,
+  pdfUrl: SAMPLE_PDF_URL, // In production, this would be a unique URL per document
   groundTruth: `Expected document content for document #${index + 1}.
 
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.
@@ -183,18 +176,16 @@ export default function Analytics() {
 
             {/* Document Comparison */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Generated Document */}
+              {/* Generated Document (PDF) */}
               <div className="review-panel">
                 <div className="flex items-center gap-2 mb-4">
                   <FileText className="h-5 w-5 text-primary" />
-                  <h3 className="font-semibold text-foreground">Generated Document</h3>
+                  <h3 className="font-semibold text-foreground">Generated Document (PDF)</h3>
                 </div>
-                <div className="bg-muted/50 rounded-lg p-4 min-h-[400px] font-mono text-sm whitespace-pre-wrap text-foreground">
-                  {currentDoc.generated}
-                </div>
+                <PDFViewer pdfUrl={currentDoc.pdfUrl} />
               </div>
 
-              {/* Ground Truth */}
+              {/* Ground Truth (Text) */}
               <div className="review-panel">
                 <div className="flex items-center gap-2 mb-4">
                   <Check className="h-5 w-5 text-success" />
