@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { User, Mail, Lock, HardDrive, Link2, Check } from 'lucide-react';
+import { User, Mail, Lock, HardDrive, Link2, Check, Key, Eye, EyeOff, Copy } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,10 @@ export default function Settings() {
   const [isLoading, setIsLoading] = useState(false);
   const [driveConnected, setDriveConnected] = useState(false);
   const [driveEnabled, setDriveEnabled] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
+  
+  // Mock API key - in production this would come from the backend
+  const apiKey = 'sk-t2d-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
   
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -23,6 +27,14 @@ export default function Settings() {
     newPassword: '',
     confirmPassword: '',
   });
+
+  const handleCopyApiKey = () => {
+    navigator.clipboard.writeText(apiKey);
+    toast({
+      title: 'API Key copied',
+      description: 'The API key has been copied to your clipboard.',
+    });
+  };
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -145,6 +157,49 @@ export default function Settings() {
               Save Changes
             </Button>
           </form>
+        </div>
+
+        {/* API Key */}
+        <div className="form-section">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Key className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">API Key</h2>
+              <p className="text-sm text-muted-foreground">Use this key to access the API programmatically</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="apiKey">Your API Key</Label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    id="apiKey"
+                    type={showApiKey ? 'text' : 'password'}
+                    value={apiKey}
+                    readOnly
+                    className="pr-10 font-mono text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowApiKey(!showApiKey)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <Button type="button" variant="outline" size="icon" onClick={handleCopyApiKey}>
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Keep this key secure. Do not share it publicly.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Password Change */}
