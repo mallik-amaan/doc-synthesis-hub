@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { FileStack, Mail, Lock, User, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,7 +19,7 @@ export default function Signup() {
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
-
+  const navigate = useNavigate()
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -47,8 +47,10 @@ export default function Signup() {
       await signup(name, email, password);
       toast({
         title: 'Account created!',
-        description: 'Welcome to DocSynth.',
+        description: 'Login using your Email and Password.',
       });
+      navigate('/login', { replace: true });
+
     } catch (error) {
       toast({
         variant: 'destructive',

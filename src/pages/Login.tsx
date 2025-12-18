@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { FileStack, Mail, Lock, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,7 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const { login, isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
@@ -21,19 +22,31 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     try {
+      // login now lives in AuthContext and performs the backend call
       await login(email, password);
+
       toast({
         title: 'Welcome back!',
         description: 'You have successfully logged in.',
       });
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Login failed',
-        description: error instanceof Error ? error.message : 'Invalid credentials',
-      });
+
+      navigate('/dashboard', { replace: true });
+    } catch (error: any) {
+      if (error?.status === 401) {
+        toast({
+          variant: 'destructive',
+          title: 'Login failed',
+          description: error instanceof Error ? error.message : 'An error occurred while logging in.',
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Login failed',
+          description: error instanceof Error ? error.message : 'An error occurred while logging in.',
+        });
+      }
     } finally {
       setIsLoading(false);
     }

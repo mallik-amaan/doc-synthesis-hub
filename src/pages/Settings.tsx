@@ -10,13 +10,19 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
 export default function Settings() {
-  const { user } = useAuth();
+  const { user ,connectGoogleDrive } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [driveConnected, setDriveConnected] = useState(false);
   const [driveEnabled, setDriveEnabled] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
-  
+  //----------------------------------------------
+  //   useEffect(() => {
+  //   checkGoogleStatus();
+  // }, []);
+  //-----------------------------------------------------
+
+
   // Mock API key - in production this would come from the backend
   const apiKey = 'sk-t2d-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
   
@@ -81,7 +87,7 @@ export default function Settings() {
 
   const handleConnectDrive = async () => {
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    await connectGoogleDrive();
     setDriveConnected(true);
     toast({
       title: 'Google Drive connected',
