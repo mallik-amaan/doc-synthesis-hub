@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Download, FileArchive, FileText, Calendar, Clock, MoreVertical, Eye, Trash2 } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -9,49 +9,24 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import { get } from 'node:http';
+import {getDocumentsInfo} from '@/services/DocumentService';
 
-// Mock data
-const mockGenerations = [
-  {
-    id: '1',
-    name: 'Research Paper Batch #101',
-    documentType: 'Research Paper',
-    language: 'English',
-    numDocs: 15,
-    createdAt: '2024-01-15T10:30:00',
-    status: 'completed',
-  },
-  {
-    id: '2',
-    name: 'Legal Document Set #102',
-    documentType: 'Legal Document',
-    language: 'English',
-    numDocs: 8,
-    createdAt: '2024-01-14T15:45:00',
-    status: 'completed',
-  },
-  {
-    id: '3',
-    name: 'Medical Records #103',
-    documentType: 'Medical Record',
-    language: 'Spanish',
-    numDocs: 22,
-    createdAt: '2024-01-13T09:15:00',
-    status: 'completed',
-  },
-  {
-    id: '4',
-    name: 'Financial Statements #104',
-    documentType: 'Financial Statement',
-    language: 'English',
-    numDocs: 12,
-    createdAt: '2024-01-12T14:00:00',
-    status: 'completed',
-  },
-];
+
+const BACKEND_URL = 'http://localhost:3000';
 
 export default function GeneratedDocs() {
   const { toast } = useToast();
+  const [generations, setGenerations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getDocumentsInfo('1234')
+      .then(setGenerations)
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+  }, []);
 
   const handleDownload = (type: 'docs' | 'groundTruth', generationId: string) => {
     toast({
@@ -88,7 +63,7 @@ export default function GeneratedDocs() {
 
         {/* Documents Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {mockGenerations.map((generation) => (
+          {generations.map((generation) => (
             <div key={generation.id} className="doc-card animate-slide-in">
               {/* Header */}
               <div className="flex items-start justify-between mb-4">
@@ -159,7 +134,7 @@ export default function GeneratedDocs() {
         </div>
 
         {/* Empty State */}
-        {mockGenerations.length === 0 && (
+        {generations.length === 0 && (
           <div className="text-center py-16">
             <FileText className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-foreground">No documents generated yet</h3>

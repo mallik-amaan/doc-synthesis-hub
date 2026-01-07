@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Flag, Check, FileText, AlertCircle } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -10,45 +10,45 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { PDFViewer } from '@/components/analytics/PDFViewer';
-
-// Mock sessions
-const mockSessions = [
-  { id: '1', name: 'Research Paper Batch #101', totalDocs: 15, date: '2024-01-15' },
-  { id: '2', name: 'Legal Document Set #102', totalDocs: 8, date: '2024-01-14' },
-  { id: '3', name: 'Medical Records #103', totalDocs: 22, date: '2024-01-13' },
-];
-
-// Sample PDF URL for demo (replace with actual PDF URLs from backend)
-const SAMPLE_PDF_URL = 'https://www.w3.org/WAI/WCAG21/Techniques/pdf/img/table-word.pdf';
-
-// Mock document content - now with PDF URL for generated doc
-const generateMockDoc = (index: number) => ({
-  pdfUrl: SAMPLE_PDF_URL, // In production, this would be a unique URL per document
-  groundTruth: `Expected document content for document #${index + 1}.
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.
-
-Section 1: Introduction
-The purpose of this document is to demonstrate the text-to-document synthesis capabilities of the platform.
-
-Section 2: Methodology
-Various NLP techniques were employed to generate structured content from unstructured text inputs.
-
-Section 3: Results
-The synthesis process achieved high accuracy in maintaining semantic consistency with the ground truth specifications.`,
-});
-
+import { getDocumentsInfo } from '@/services/DocumentService';
 export default function Analytics() {
   const { toast } = useToast();
   const [selectedSession, setSelectedSession] = useState<string>('');
   const [currentDocIndex, setCurrentDocIndex] = useState(0);
   const [flaggedDocs, setFlaggedDocs] = useState<Set<number>>(new Set());
   const [isReviewComplete, setIsReviewComplete] = useState(false);
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState(true);
+  const [errorSessions, setErrorSessions] = useState<string | null>(null);
 
-  const session = mockSessions.find(s => s.id === selectedSession);
-  const totalDocs = session?.totalDocs || 0;
-  const currentDoc = generateMockDoc(currentDocIndex);
+
+  useEffect(() => {
+    getDocumentsInfo('1234')
+      .then(setSessions)
+      .catch(err => setErrorSessions(err.message))
+      .finally(() => setLoadingSessions(false));
+  }, []);
+
+  function getDrivePreviewUrl(driveUrl) {
+    // Regular expression to extract file ID from different types of Google Drive URLs
+    const regex = /\/d\/([a-zA-Z0-9_-]+)|id=([a-zA-Z0-9_-]+)/;
+    const match = driveUrl.match(regex);
+
+    if (!match) {
+      throw new Error("Invalid Google Drive URL");
+    }
+
+    // File ID could be in group 1 or 2
+    const fileId = match[1] || match[2];
+
+    // Construct preview URL
+    return `https://drive.google.com/file/d/${fileId}/preview`;
+  }
+
+  const session = sessions.find(s => s.id === selectedSession);
+  const totalDocs = session?.numDocs || 0;
+  const pdfToRender = "https://drive.google.com/file/d/1EzUn4OumAOyPtyfbEPNATVACq0su9gxd/preview"
+  //get Details of the current session
 
   const handlePrevious = () => {
     setCurrentDocIndex(prev => Math.max(0, prev - 1));
@@ -126,9 +126,9 @@ export default function Analytics() {
                   <SelectValue placeholder="Choose a session to review" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover">
-                  {mockSessions.map(session => (
+                  {sessions.map(session => (
                     <SelectItem key={session.id} value={session.id}>
-                      {session.name} ({session.totalDocs} docs)
+                      {session.name} ({session.numDocs} docs)
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -182,7 +182,15 @@ export default function Analytics() {
                   <FileText className="h-5 w-5 text-primary" />
                   <h3 className="font-semibold text-foreground">Generated Document (PDF)</h3>
                 </div>
-                <PDFViewer pdfUrl={currentDoc.pdfUrl} />
+                {
+                  pdfToRender ?
+                    (
+                      <iframe height={500} width={500} src={pdfToRender} />
+                    )
+                    :
+                    (
+                      <div className="text-muted-foreground">No PDF available to preview.</div>
+                    )}
               </div>
 
               {/* Ground Truth (Text) */}
@@ -192,8 +200,16 @@ export default function Analytics() {
                   <h3 className="font-semibold text-foreground">Ground Truth</h3>
                 </div>
                 <div className="bg-muted/50 rounded-lg p-4 min-h-[400px] font-mono text-sm whitespace-pre-wrap text-foreground">
-                  {currentDoc.groundTruth}
-                </div>
+                  {
+                    pdfToRender ?
+                      (
+                        <iframe height={500} width={500} src={pdfToRender} />
+                      )
+                      :
+                      (
+                        <div className="text-muted-foreground">No PDF available to preview.</div>
+                      )}      
+                                </div>
               </div>
             </div>
 
@@ -216,13 +232,12 @@ export default function Analytics() {
                 <button
                   key={index}
                   onClick={() => setCurrentDocIndex(index)}
-                  className={`h-2.5 w-2.5 rounded-full transition-all ${
-                    index === currentDocIndex
+                  className={`h-2.5 w-2.5 rounded-full transition-all ${index === currentDocIndex
                       ? 'bg-primary scale-125'
                       : flaggedDocs.has(index)
-                      ? 'bg-destructive'
-                      : 'bg-muted hover:bg-muted-foreground/30'
-                  }`}
+                        ? 'bg-destructive'
+                        : 'bg-muted hover:bg-muted-foreground/30'
+                    }`}
                 />
               ))}
             </div>
@@ -237,7 +252,7 @@ export default function Analytics() {
             <p className="text-muted-foreground mb-6">
               You've reviewed all {totalDocs} documents in this session.
             </p>
-            
+
             <div className="flex justify-center gap-8 mb-8">
               <div className="text-center">
                 <p className="text-4xl font-bold text-success">{totalDocs - flaggedDocs.size}</p>

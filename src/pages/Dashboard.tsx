@@ -1,20 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FileText, FileCheck, AlertTriangle, TrendingUp, Plus } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { DocumentRequestModal } from '@/components/dashboard/DocumentRequestModal';
 import { Button } from '@/components/ui/button';
-
-// Mock data
-const stats = {
-  generatedDocs: 156,
-  requestedDocs: 178,
-  flaggedDocs: 12,
-  successRatio: 93.2,
-};
+import { getDashboardStats } from '@/services/DocumentService';
 
 export default function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [stats, setStats] = useState([])
+  useEffect(() => {
+    // Assuming userId is available via some auth context or similar
+    const userId = '1234';
+    getDashboardStats(userId)
+      .then(data => setStats(data))
+      .catch(err => console.error('Error fetching dashboard stats:', err));
+  }, []);
 
   return (
     <DashboardLayout>
@@ -42,28 +43,28 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatsCard
             title="Generated Docs"
-            value={stats.generatedDocs}
+            value={stats['generatedDocs']}
             icon={<FileCheck className="h-6 w-6" />}
             trend={{ value: 12, isPositive: true }}
             variant="success"
           />
           <StatsCard
             title="Requested Docs"
-            value={stats.requestedDocs}
+            value={stats['requestedDocs']}
             icon={<FileText className="h-6 w-6" />}
             trend={{ value: 8, isPositive: true }}
             variant="default"
           />
           <StatsCard
             title="Flagged Docs"
-            value={stats.flaggedDocs}
+            value={stats['flaggedDocs']}
             icon={<AlertTriangle className="h-6 w-6" />}
             trend={{ value: 5, isPositive: false }}
             variant="warning"
           />
           <StatsCard
             title="Success Ratio"
-            value={`${stats.successRatio}%`}
+            value={`${stats['successRatio']}`}
             icon={<TrendingUp className="h-6 w-6" />}
             trend={{ value: 2.3, isPositive: true }}
             variant="success"
@@ -100,7 +101,7 @@ export default function Dashboard() {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Processing Queue</span>
-                  <span className="font-medium text-foreground">3 documents</span>
+                  <span className="font-medium text-foreground">{stats['processingQueue']} documents</span>
                 </div>
                 <div className="h-2 rounded-full bg-muted overflow-hidden">
                   <div className="h-full w-1/4 bg-primary rounded-full progress-shimmer" />
@@ -109,7 +110,7 @@ export default function Dashboard() {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Pending Review</span>
-                  <span className="font-medium text-foreground">8 documents</span>
+                  <span className="font-medium text-foreground">{stats['pendingReview']} documents</span>
                 </div>
                 <div className="h-2 rounded-full bg-muted overflow-hidden">
                   <div className="h-full w-1/2 bg-warning rounded-full" />
@@ -118,7 +119,7 @@ export default function Dashboard() {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Verified Today</span>
-                  <span className="font-medium text-foreground">24 documents</span>
+                  <span className="font-medium text-foreground">{stats['verfiedToday']} documents</span>
                 </div>
                 <div className="h-2 rounded-full bg-muted overflow-hidden">
                   <div className="h-full w-3/4 bg-success rounded-full" />
