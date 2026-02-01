@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Download, FileArchive, FileText, Calendar, Clock, MoreVertical, Eye, Trash2 } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -9,13 +10,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
-import { get } from 'node:http';
-import {getDocumentsInfo} from '@/services/DocumentService';
-
+import { getDocumentsInfo } from '@/services/DocumentService';
 
 const BACKEND_URL = 'http://localhost:3000';
 
 export default function GeneratedDocs() {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [generations, setGenerations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,7 +88,7 @@ export default function GeneratedDocs() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="bg-popover">
-                    <DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate(`/document-details/${generation.id}`)}>
                       <Eye className="h-4 w-4 mr-2" />
                       View Details
                     </DropdownMenuItem>
