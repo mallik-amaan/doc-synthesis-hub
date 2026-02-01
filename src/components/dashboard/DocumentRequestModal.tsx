@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload, Image, Trash2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Progress } from '@/components/ui/progress';
 import {
   Select,
   SelectContent,
@@ -21,7 +22,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { startGenerationFlow } from '@/services/DocumentService';
+import { startGenerationFlow, UploadProgressState } from '@/services/DocumentService';
 
 interface DocumentRequestModalProps {
   open: boolean;
@@ -36,6 +37,7 @@ export function DocumentRequestModal({ open, onOpenChange }: DocumentRequestModa
   const { toast } = useToast();
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgressState | null>(null);
   const [formData, setFormData] = useState({
     documentName: '',
     language: '',
@@ -94,6 +96,7 @@ export function DocumentRequestModal({ open, onOpenChange }: DocumentRequestModa
     }
 
     setIsSubmitting(true);
+    setUploadProgress(null);
     
     try {
       const response = await startGenerationFlow({
@@ -108,6 +111,9 @@ export function DocumentRequestModal({ open, onOpenChange }: DocumentRequestModa
           redaction: formData.redaction,
           numSolutions: formData.numSolutions,
         },
+        onUploadProgress: (state) => {
+          setUploadProgress(state);
+        },
       });
 
       toast({
@@ -116,23 +122,87 @@ export function DocumentRequestModal({ open, onOpenChange }: DocumentRequestModa
       });
 
       onOpenChange(false);
-      navigate('/generation-progress', { 
-        state: { 
-          requestId: response.requestId || Date.now().toString(),
-          formData,
-          response
-        } 
-      });
+      setUploadProgress(null);
+      navigate('/generated-docs');
     } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Generation failed',
         description: error instanceof Error ? error.message : 'Failed to submit document generation request.',
       });
+      setUploadProgress(null);
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const getUploadPhaseLabel = () => {
+    if (!uploadProgress) return '';
+    switch (uploadProgress.phase) {
+      case 'seed':
+        return 'Uploading seed documents...';
+      case 'visual':
+        return 'Uploading visual assets...';
+      case 'completing':
+        return 'Finalizing...';
+      case 'done':
+        return 'Complete!';
+      default:
+        return 'Processing...';
+    }
+  };
+
+  const getUploadPercent = () => {
+    if (!uploadProgress || uploadProgress.totalFiles === 0) return 0;
+    return Math.round((uploadProgress.currentFileIndex / uploadProgress.totalFiles) * 100);
+  };
+
+  // Show upload progress UI when uploading
+  if (uploadProgress && isSubmitting) {
+    return (
+      <Dialog open={open} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold">Uploading Files</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            <div className="text-center">
+              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                <Upload className="h-6 w-6 text-primary animate-pulse" />
+              </div>
+              <p className="text-sm text-muted-foreground">{getUploadPhaseLabel()}</p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">
+                  {uploadProgress.currentFileIndex} of {uploadProgress.totalFiles} files
+                </span>
+                <span className="font-medium">{getUploadPercent()}%</span>
+              </div>
+              <Progress value={getUploadPercent()} className="h-2" />
+            </div>
+
+            {uploadProgress.currentFileName && (
+              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                <div className="h-8 w-8 rounded bg-primary/10 flex items-center justify-center">
+                  {uploadProgress.phase === 'visual' ? (
+                    <Image className="h-4 w-4 text-primary" />
+                  ) : (
+                    <Upload className="h-4 w-4 text-primary" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{uploadProgress.currentFileName}</p>
+                </div>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

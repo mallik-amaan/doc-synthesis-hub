@@ -109,8 +109,6 @@ async function uploadFileToSignedUrl(file: File, uploadUrl: string) {
   }
 }
 
-
-
 export type StartGenerationParams = {
   userId: string;
   seedFiles: File[];
@@ -123,11 +121,22 @@ export type StartGenerationParams = {
     redaction: boolean;
     numSolutions: number;
   };
+  onUploadProgress?: (state: UploadProgressState) => void;
 };
 
+export type UploadProgressState = {
+  seedFiles: File[];
+  visualFiles: File[];
+  currentFileIndex: number;
+  totalFiles: number;
+  currentFileName: string;
+  phase: 'seed' | 'visual' | 'completing' | 'done';
+};
 
 export async function startGenerationFlow(params: StartGenerationParams) {
-  const { userId, seedFiles, visualFiles, metadata } = params;
+  const { userId, seedFiles, visualFiles, metadata, onUploadProgress } = params;
+
+  const totalFiles = seedFiles.length + visualFiles.length;
 
   // 1️⃣ Create request & get upload URLs
   const response = await createRequestWithUploadUrls({
@@ -139,23 +148,54 @@ export async function startGenerationFlow(params: StartGenerationParams) {
 
   const { requestId, uploads } = response;
 
+  let uploadedCount = 0;
+
   // 2️⃣ Upload seed docs (MANDATORY)
   for (let i = 0; i < uploads.seedDocs.length; i++) {
+    onUploadProgress?.({
+      seedFiles,
+      visualFiles,
+      currentFileIndex: uploadedCount,
+      totalFiles,
+      currentFileName: seedFiles[i].name,
+      phase: 'seed'
+    });
+
     await uploadFileToSignedUrl(
       seedFiles[i],
       uploads.seedDocs[i].uploadUrl
     );
+    uploadedCount++;
   }
 
   // 3️⃣ Upload visual assets (OPTIONAL)
   for (let i = 0; i < uploads.visualAssets.length; i++) {
+    onUploadProgress?.({
+      seedFiles,
+      visualFiles,
+      currentFileIndex: uploadedCount,
+      totalFiles,
+      currentFileName: visualFiles[i].name,
+      phase: 'visual'
+    });
+
     await uploadFileToSignedUrl(
       visualFiles[i],
       uploads.visualAssets[i].uploadUrl
     );
+    uploadedCount++;
   }
 
   // 4️⃣ Notify backend uploads are complete
+  onUploadProgress?.({
+    seedFiles,
+    visualFiles,
+    currentFileIndex: uploadedCount,
+    totalFiles,
+    currentFileName: '',
+    phase: 'completing'
+  });
+
   const completeRes = await fetch(`${BACKEND_URL}/requests/${requestId}/complete`, {
     method: 'POST'
   });
@@ -164,6 +204,15 @@ export async function startGenerationFlow(params: StartGenerationParams) {
     const err = await completeRes.json().catch(() => ({}));
     throw new Error(err.error || 'Failed to complete upload');
   }
+
+  onUploadProgress?.({
+    seedFiles,
+    visualFiles,
+    currentFileIndex: totalFiles,
+    totalFiles,
+    currentFileName: '',
+    phase: 'done'
+  });
 
   return { requestId, uploads };
 }

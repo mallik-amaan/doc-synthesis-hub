@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { getDocumentsInfo } from '@/services/DocumentService';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const BACKEND_URL = 'http://localhost:3000';
 
@@ -23,7 +24,7 @@ export default function GeneratedDocs() {
 
   useEffect(() => {
     getDocumentsInfo('23')
-      .then(setGenerations)
+      .then(data => setGenerations(data || []))
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
@@ -138,8 +139,37 @@ export default function GeneratedDocs() {
           ))}
         </div>
 
+        {/* Loading State */}
+        {loading && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="doc-card animate-slide-in">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-12 w-12 rounded-xl" />
+                    <div>
+                      <Skeleton className="h-5 w-32 mb-2" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-8 w-8 rounded" />
+                </div>
+                <div className="flex items-center gap-4 mb-4">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-5 w-16 rounded-full" />
+                </div>
+                <div className="grid grid-cols-2 gap-3 pt-4 border-t border-border">
+                  <Skeleton className="h-10 w-full rounded" />
+                  <Skeleton className="h-10 w-full rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Empty State */}
-        {generations.length === 0 && (
+        {!loading && generations.length === 0 && (
           <div className="text-center py-16">
             <FileText className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-foreground">No documents generated yet</h3>
