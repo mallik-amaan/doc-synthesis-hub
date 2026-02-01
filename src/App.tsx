@@ -10,6 +10,7 @@ import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import GeneratedDocs from "./pages/GeneratedDocs";
 import GenerationProgress from "./pages/GenerationProgress";
+import DocumentDetails from "./pages/DocumentDetails";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/generated-docs" element={<GeneratedDocs />} />
             <Route path="/generation-progress" element={<GenerationProgress />} />
+            <Route path="/document-details/:id" element={<DocumentDetails />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<NotFound />} />

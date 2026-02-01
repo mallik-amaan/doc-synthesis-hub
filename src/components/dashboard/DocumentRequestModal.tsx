@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Upload, Info, Image, Trash2 } from 'lucide-react';
+import { Upload, Image, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,6 +34,7 @@ export function DocumentRequestModal({ open, onOpenChange }: DocumentRequestModa
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
+    documentName: '',
     language: '',
     groundTruth: '',
     numSolutions: 1,
@@ -71,7 +72,7 @@ export function DocumentRequestModal({ open, onOpenChange }: DocumentRequestModa
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.language || !formData.documentType || !formData.groundTruth) {
+    if (!formData.documentName || !formData.language || !formData.documentType || !formData.groundTruth) {
       toast({
         variant: 'destructive',
         title: 'Missing fields',
@@ -102,6 +103,16 @@ export function DocumentRequestModal({ open, onOpenChange }: DocumentRequestModa
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="documentName">Document Name *</Label>
+            <Input
+              id="documentName"
+              placeholder="Enter document name"
+              value={formData.documentName}
+              onChange={(e) => setFormData(prev => ({ ...prev, documentName: e.target.value }))}
+            />
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label htmlFor="language">Language *</Label>
@@ -139,13 +150,7 @@ export function DocumentRequestModal({ open, onOpenChange }: DocumentRequestModa
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="groundTruth">Ground Truth Specification *</Label>
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Info className="h-3.5 w-3.5" />
-                <span>Follow the format below</span>
-              </div>
-            </div>
+            <Label htmlFor="groundTruth">Ground Truth Specification *</Label>
             <Textarea
               id="groundTruth"
               placeholder="Enter ground truth specification..."
@@ -153,10 +158,6 @@ export function DocumentRequestModal({ open, onOpenChange }: DocumentRequestModa
               onChange={(e) => setFormData(prev => ({ ...prev, groundTruth: e.target.value }))}
               className="min-h-[120px] font-mono text-sm"
             />
-            <div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground font-mono">
-              <p className="font-semibold mb-1">Required Format:</p>
-              <p>{'{'} "field_name": "value", "entities": [...], "structure": "..." {'}'}</p>
-            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
