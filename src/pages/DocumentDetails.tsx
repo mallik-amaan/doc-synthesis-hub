@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Check, Circle, ArrowLeft, FileImage, CheckCircle2, XCircle } from 'lucide-react';
+import { Check, Circle, ArrowLeft, FileText, CheckCircle2, XCircle } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { PDFViewer } from '@/components/analytics/PDFViewer';
 
 interface ProgressStep {
   id: string;
@@ -16,7 +17,7 @@ interface ProgressStep {
 interface RedactedDocument {
   id: string;
   name: string;
-  previewUrl: string;
+  pdfUrl: string;
 }
 
 // Mock data - replace with actual API calls
@@ -28,10 +29,10 @@ const mockProgressSteps: ProgressStep[] = [
   { id: '5', label: 'Final Document Generation', status: 'pending' },
 ];
 
+// Mock data - these URLs would come from Supabase storage
 const mockRedactedDocs: RedactedDocument[] = [
-  { id: '1', name: 'Document_Page_1.png', previewUrl: 'https://via.placeholder.com/400x500/1a1a2e/ffffff?text=Redacted+Page+1' },
-  { id: '2', name: 'Document_Page_2.png', previewUrl: 'https://via.placeholder.com/400x500/1a1a2e/ffffff?text=Redacted+Page+2' },
-  { id: '3', name: 'Document_Page_3.png', previewUrl: 'https://via.placeholder.com/400x500/1a1a2e/ffffff?text=Redacted+Page+3' },
+  { id: '1', name: 'Redacted_Document_1.pdf', pdfUrl: 'https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf' },
+  { id: '2', name: 'Redacted_Document_2.pdf', pdfUrl: 'https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf' },
 ];
 
 export default function DocumentDetails() {
@@ -40,6 +41,7 @@ export default function DocumentDetails() {
   const { toast } = useToast();
   const [steps] = useState<ProgressStep[]>(mockProgressSteps);
   const [redactedDocs] = useState<RedactedDocument[]>(mockRedactedDocs);
+  const [selectedPdfIndex, setSelectedPdfIndex] = useState(0);
   const [isApproving, setIsApproving] = useState(false);
 
   const completedSteps = steps.filter(s => s.status === 'completed').length;
@@ -153,7 +155,7 @@ export default function DocumentDetails() {
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <FileImage className="h-5 w-5" />
+              <FileText className="h-5 w-5" />
               Redacted Documents Preview
             </CardTitle>
           </CardHeader>
@@ -162,26 +164,31 @@ export default function DocumentDetails() {
               Please review the redacted documents below. Confirm if the redactions are correct before proceeding with final document generation.
             </p>
 
-            {/* Document Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {redactedDocs.map((doc) => (
-                <div
+            {/* Document Selector */}
+            <div className="flex flex-wrap gap-2">
+              {redactedDocs.map((doc, index) => (
+                <Button
                   key={doc.id}
-                  className="border border-border rounded-lg overflow-hidden hover:border-primary/50 transition-colors"
+                  variant={selectedPdfIndex === index ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedPdfIndex(index)}
+                  className="gap-2"
                 >
-                  <div className="aspect-[4/5] bg-muted relative">
-                    <img
-                      src={doc.previewUrl}
-                      alt={doc.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="p-3 bg-card">
-                    <p className="text-sm font-medium truncate">{doc.name}</p>
-                  </div>
-                </div>
+                  <FileText className="h-4 w-4" />
+                  {doc.name}
+                </Button>
               ))}
             </div>
+
+            {/* PDF Viewer */}
+            {redactedDocs.length > 0 && (
+              <div className="border border-border rounded-lg p-4">
+                <PDFViewer 
+                  pdfUrl={redactedDocs[selectedPdfIndex].pdfUrl} 
+                  className="min-h-[500px]"
+                />
+              </div>
+            )}
 
             {/* Approval Section */}
             <div className="border-t border-border pt-6">
