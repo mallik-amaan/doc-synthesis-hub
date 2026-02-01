@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload, Image, Trash2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,6 +21,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { startGenerationFlow } from '@/services/DocumentService';
 
 interface DocumentRequestModalProps {
   open: boolean;
@@ -32,6 +34,7 @@ const documentTypes = ['Research Paper', 'Technical Report', 'Legal Document', '
 export function DocumentRequestModal({ open, onOpenChange }: DocumentRequestModalProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     documentName: '',
@@ -81,18 +84,54 @@ export function DocumentRequestModal({ open, onOpenChange }: DocumentRequestModa
       return;
     }
 
+    if (!user) {
+      toast({
+        variant: 'destructive',
+        title: 'Authentication error',
+        description: 'Please log in to generate documents.',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    onOpenChange(false);
-    navigate('/generation-progress', { 
-      state: { 
-        requestId: Date.now().toString(),
-        formData 
-      } 
-    });
+    try {
+      const response = await startGenerationFlow({
+        userId: user.id,
+        seedFiles: formData.seedDocument ? [formData.seedDocument] : [],
+        visualFiles: formData.visualAssets,
+        metadata: {
+          documentName: formData.documentName,
+          groundTruth: formData.groundTruth,
+          documentType: formData.documentType,
+          language: formData.language,
+          redaction: formData.redaction,
+          numSolutions: formData.numSolutions,
+        },
+      });
+
+      toast({
+        title: 'Success',
+        description: 'Document generation request submitted successfully.',
+      });
+
+      onOpenChange(false);
+      navigate('/generation-progress', { 
+        state: { 
+          requestId: response.requestId || Date.now().toString(),
+          formData,
+          response
+        } 
+      });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Generation failed',
+        description: error instanceof Error ? error.message : 'Failed to submit document generation request.',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

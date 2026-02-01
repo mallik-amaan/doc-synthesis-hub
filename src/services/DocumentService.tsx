@@ -42,4 +42,129 @@ export async function getDashboardStats(userId: string) {
 
     const data = await res.json();
     return data;
-}   
+}
+type CreateRequestResponse = {
+  requestId: string;
+  uploads: {
+    seedDocs: {
+      fileName: string;
+      path: string;
+      uploadUrl: string;
+    }[];
+    visualAssets: {
+      fileName: string;
+      path: string;
+      uploadUrl: string;
+    }[];
+  };
+};
+
+export async function createRequestWithUploadUrls({
+  userId,
+  seedFiles,
+  visualFiles = [],
+  metadata
+}: {
+  userId: string;
+  seedFiles: File[];
+  visualFiles?: File[];
+  metadata: Record<string, any>;
+}): Promise<CreateRequestResponse> {
+
+  const body = {
+    userId,
+    seedFiles: seedFiles.map(f => f.name),
+    visualFiles: visualFiles.map(f => f.name),
+    metadata
+  };
+
+  const res = await fetch(
+    `${BACKEND_URL}/requests/create-with-urls`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }
+  );
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to create request');
+  }
+
+  return res.json();
+}
+
+async function uploadFileToSignedUrl(file: File, uploadUrl: string) {
+  const res = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': file.type
+    },
+    body: file
+  });
+
+  if (!res.ok) {
+    throw new Error(`Upload failed for ${file.name}`);
+  }
+}
+
+
+
+export type StartGenerationParams = {
+  userId: string;
+  seedFiles: File[];
+  visualFiles: File[];
+  metadata: {
+    documentName: string;
+    groundTruth: string;
+    documentType: string;
+    language: string;
+    redaction: boolean;
+    numSolutions: number;
+  };
+};
+
+
+export async function startGenerationFlow(params: StartGenerationParams) {
+  const { userId, seedFiles, visualFiles, metadata } = params;
+
+  // 1️⃣ Create request & get upload URLs
+  const response = await createRequestWithUploadUrls({
+    userId,
+    seedFiles,
+    visualFiles,
+    metadata
+  });
+
+  const { requestId, uploads } = response;
+
+  // 2️⃣ Upload seed docs (MANDATORY)
+  for (let i = 0; i < uploads.seedDocs.length; i++) {
+    await uploadFileToSignedUrl(
+      seedFiles[i],
+      uploads.seedDocs[i].uploadUrl
+    );
+  }
+
+  // 3️⃣ Upload visual assets (OPTIONAL)
+  for (let i = 0; i < uploads.visualAssets.length; i++) {
+    await uploadFileToSignedUrl(
+      visualFiles[i],
+      uploads.visualAssets[i].uploadUrl
+    );
+  }
+
+  // 4️⃣ Notify backend uploads are complete
+  const completeRes = await fetch(`${BACKEND_URL}/requests/${requestId}/complete`, {
+    method: 'POST'
+  });
+
+  if (!completeRes.ok) {
+    const err = await completeRes.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to complete upload');
+  }
+
+  return { requestId, uploads };
+}
+

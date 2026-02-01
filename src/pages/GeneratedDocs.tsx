@@ -77,7 +77,7 @@ export default function GeneratedDocs() {
                     <FileText className="h-6 w-6 text-primary" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground">{generation.doc_name}</h3>
+                    <h3 className="font-semibold text-foreground">{generation.metadata.documentName}</h3>
                     <p className="text-sm text-muted-foreground">{generation.documentType}</p>
                   </div>
                 </div>
