@@ -10,7 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
 export default function Settings() {
-  const { user ,connectGoogleDrive } = useAuth();
+  const { user, connectGoogleDrive, changePassword } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [driveConnected, setDriveConnected] = useState(false);
@@ -68,21 +68,40 @@ export default function Settings() {
       return;
     }
 
+    if (!formData.currentPassword || !formData.newPassword) {
+      toast({
+        variant: 'destructive',
+        title: 'Missing fields',
+        description: 'Please fill in all password fields.',
+      });
+      return;
+    }
+
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    toast({
-      title: 'Password changed',
-      description: 'Your password has been successfully updated.',
-    });
-    
-    setFormData(prev => ({
-      ...prev,
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: '',
-    }));
-    setIsLoading(false);
+    try {
+      await changePassword(formData.currentPassword, formData.newPassword);
+      
+      toast({
+        
+        title: 'Password changed',
+        description: 'Your password has been successfully updated.',
+      });
+      
+      setFormData(prev => ({
+        ...prev,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      }));
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Password change failed',
+        description: error.message || 'An error occurred while changing your password.',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleConnectDrive = async () => {

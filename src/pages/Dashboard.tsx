@@ -77,18 +77,26 @@ export default function Dashboard() {
           <div className="stat-card">
             <h3 className="text-lg font-semibold text-foreground mb-4">Recent Generations</h3>
             <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
+              {stats['recentGenerations']?.map((i) => (
                 <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
                       <FileText className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="font-medium text-foreground">Research Paper #{100 + i}</p>
-                      <p className="text-sm text-muted-foreground">Generated 2h ago</p>
+                      <p className="font-medium text-foreground">{i["docName"]}</p>
+                      <p className="text-sm text-muted-foreground">{i["date"]}</p>
                     </div>
                   </div>
-                  <span className="badge-success">Complete</span>
+                  {i["status"] === "Verified" && (
+                  <span className="badge-success">Verified</span>
+                  )}
+                  {i["status"] === "Pending Review" && (
+                  <span className="badge-warning">Pending</span>
+                  )}
+                  {i["status"] === "Flagged" && (
+                  <span className="badge-destructive">Flagged</span>
+                  )}
                 </div>
               ))}
             </div>

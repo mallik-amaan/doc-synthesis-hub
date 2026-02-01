@@ -22,7 +22,7 @@ export default function GeneratedDocs() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getDocumentsInfo('1234')
+    getDocumentsInfo('23')
       .then(setGenerations)
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
@@ -36,12 +36,17 @@ export default function GeneratedDocs() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
+  if (!dateString) return "";
+
+  const date = new Date(dateString);
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC" // ensures consistent output across servers
+  });
+};
 
   const formatTime = (dateString: string) => {
     return new Date(dateString).toLocaleTimeString('en-US', {
@@ -72,7 +77,7 @@ export default function GeneratedDocs() {
                     <FileText className="h-6 w-6 text-primary" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground">{generation.name}</h3>
+                    <h3 className="font-semibold text-foreground">{generation.doc_name}</h3>
                     <p className="text-sm text-muted-foreground">{generation.documentType}</p>
                   </div>
                 </div>
@@ -99,11 +104,11 @@ export default function GeneratedDocs() {
               <div className="flex items-center gap-4 mb-4 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                   <Calendar className="h-4 w-4" />
-                  {formatDate(generation.createdAt)}
+                  {formatDate(generation.created_at)}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Clock className="h-4 w-4" />
-                  {formatTime(generation.createdAt)}
+                  {formatTime(generation.created_at)}
                 </span>
                 <span className="badge-success">{generation.numDocs} docs</span>
               </div>
