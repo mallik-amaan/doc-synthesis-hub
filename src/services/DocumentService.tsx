@@ -217,3 +217,28 @@ export async function startGenerationFlow(params: StartGenerationParams) {
   return { requestId, uploads };
 }
 
+export type RedactionStatusResponse = {
+  request_id: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  files?: string[];
+  message?: string;
+};
+
+export async function getRedactionStatus(requestId: string): Promise<RedactionStatusResponse> {
+  const res = await fetch(`https://312f713d9009.ngrok-free.app/redaction_status/${requestId}`, {
+    method: 'GET',
+     headers: {
+    'ngrok-skip-browser-warning': 'true',
+  },
+  });
+
+  if (!res.ok) {
+    throw new Error('Failed to fetch redaction status');
+  }
+  console.log('---printing res---')
+  console.log(res)
+  const data = await res.json();
+  console.log(data)
+  return data;
+} 
+
