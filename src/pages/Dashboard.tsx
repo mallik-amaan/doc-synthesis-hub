@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { FileText, FileCheck, AlertTriangle, TrendingUp, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { FileText, FileCheck, AlertTriangle, TrendingUp, Plus, Clock, CheckCircle2, XCircle, Eye } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { DocumentRequestModal } from '@/components/dashboard/DocumentRequestModal';
@@ -7,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { getDashboardStats } from '@/services/DocumentService';
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [stats, setStats] = useState([])
   useEffect(() => {
@@ -71,69 +73,87 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Recent Activity Section */}
+        {/* Bottom Sections */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Recent Generations */}
+          {/* Active Requests */}
           <div className="stat-card">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Recent Generations</h3>
-            <div className="space-y-3">
-              {stats['recentGenerations']?.map((i) => (
-                <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <FileText className="h-5 w-5 text-primary" />
+            <h3 className="text-lg font-semibold text-foreground mb-4">Active Requests</h3>
+            {stats['activeRequests']?.length > 0 ? (
+              <div className="space-y-3">
+                {stats['activeRequests']?.map((req: any, i: number) => (
+                  <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
+                        req.status === 'completed' ? 'bg-success/10' :
+                        req.status === 'failed' ? 'bg-destructive/10' :
+                        req.status === 'review' ? 'bg-warning/10' :
+                        'bg-primary/10'
+                      }`}>
+                        {req.status === 'completed' ? <CheckCircle2 className="h-5 w-5 text-success" /> :
+                         req.status === 'failed' ? <XCircle className="h-5 w-5 text-destructive" /> :
+                         req.status === 'review' ? <Eye className="h-5 w-5 text-warning" /> :
+                         <Clock className="h-5 w-5 text-primary" />}
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">{req.name}</p>
+                        <p className="text-xs text-muted-foreground">{req.type} · {req.date}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-foreground">{i["docName"]}</p>
-                      <p className="text-sm text-muted-foreground">{i["date"]}</p>
+                    <div className="flex items-center gap-2">
+                      {req.status === 'processing' && <span className="badge-default text-xs">Processing</span>}
+                      {req.status === 'review' && <span className="badge-warning text-xs">Needs Review</span>}
+                      {req.status === 'completed' && <span className="badge-success text-xs">Completed</span>}
+                      {req.status === 'failed' && <span className="badge-destructive text-xs">Failed</span>}
+                      {req.id && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={() => navigate(`/document-details/${req.id}`)}
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </div>
                   </div>
-                  {i["status"] === "Verified" && (
-                  <span className="badge-success">Verified</span>
-                  )}
-                  {i["status"] === "Pending Review" && (
-                  <span className="badge-warning">Pending</span>
-                  )}
-                  {i["status"] === "Flagged" && (
-                  <span className="badge-destructive">Flagged</span>
-                  )}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <Clock className="h-10 w-10 text-muted-foreground/50 mb-3" />
+                <p className="text-sm text-muted-foreground">No active requests</p>
+                <p className="text-xs text-muted-foreground mt-1">Start by requesting a document generation</p>
+              </div>
+            )}
           </div>
 
-          {/* Quick Stats */}
+          {/* Document Type Breakdown */}
           <div className="stat-card">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Generation Overview</h3>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Processing Queue</span>
-                  <span className="font-medium text-foreground">{stats['processingQueue']} documents</span>
-                </div>
-                <div className="h-2 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full w-1/4 bg-primary rounded-full progress-shimmer" />
-                </div>
+            <h3 className="text-lg font-semibold text-foreground mb-4">Document Type Breakdown</h3>
+            {stats['typeBreakdown']?.length > 0 ? (
+              <div className="space-y-4">
+                {stats['typeBreakdown']?.map((item: any, i: number) => (
+                  <div key={i} className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">{item.type}</span>
+                      <span className="font-medium text-foreground">{item.count} docs</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all"
+                        style={{ width: `${item.percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Pending Review</span>
-                  <span className="font-medium text-foreground">{stats['pendingReview']} documents</span>
-                </div>
-                <div className="h-2 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full w-1/2 bg-warning rounded-full" />
-                </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <FileText className="h-10 w-10 text-muted-foreground/50 mb-3" />
+                <p className="text-sm text-muted-foreground">No documents yet</p>
+                <p className="text-xs text-muted-foreground mt-1">Your document type distribution will appear here</p>
               </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Verified Today</span>
-                  <span className="font-medium text-foreground">{stats['verfiedToday']} documents</span>
-                </div>
-                <div className="h-2 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full w-3/4 bg-success rounded-full" />
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
