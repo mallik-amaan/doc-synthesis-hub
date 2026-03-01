@@ -23,10 +23,11 @@ export default function Analytics() {
 
 
   useEffect(() => {
-    getDocumentsInfo('1234')
+    getDocumentsInfo('23')
       .then(setSessions)
       .catch(err => setErrorSessions(err.message))
       .finally(() => setLoadingSessions(false));
+
   }, []);
 
   function getDrivePreviewUrl(driveUrl) {
@@ -46,7 +47,7 @@ export default function Analytics() {
   }
 
   const session = sessions.find(s => s.id === selectedSession);
-  const totalDocs = session?.numDocs || 0;
+  const totalDocs = session?.metadata.numSolutions || 0;
   const pdfToRender = "https://drive.google.com/file/d/1EzUn4OumAOyPtyfbEPNATVACq0su9gxd/preview"
   //get Details of the current session
 
@@ -116,7 +117,7 @@ export default function Analytics() {
               <label className="text-sm font-medium text-foreground mb-2 block">
                 Select Generation Session
               </label>
-              <Select value={selectedSession} onValueChange={(value) => {
+              <Select value={selectedSession} onValueChange={(value) => { 
                 setSelectedSession(value);
                 setCurrentDocIndex(0);
                 setFlaggedDocs(new Set());
@@ -128,7 +129,7 @@ export default function Analytics() {
                 <SelectContent className="bg-popover">
                   {sessions.map(session => (
                     <SelectItem key={session.id} value={session.id}>
-                      {session.name} ({session.numDocs} docs)
+                      {session.metadata.documentName} ({session.numDocs} docs)
                     </SelectItem>
                   ))}
                 </SelectContent>

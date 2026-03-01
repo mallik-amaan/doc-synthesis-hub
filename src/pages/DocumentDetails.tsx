@@ -7,7 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { PDFViewer } from '@/components/analytics/PDFViewer';
-import { getRedactionStatus, type RedactionStatusResponse } from '@/services/DocumentService';
+import { getRedactionStatus, isRedactionApproved, type RedactionStatusResponse } from '@/services/DocumentService';
 
 interface RedactedDocument {
   id: string;
@@ -38,8 +38,11 @@ export default function DocumentDetails() {
         console.log(id)
         const status = await getRedactionStatus(id);
         setRedactionStatus(status);
+        console.log("redaction status is "+ status.status)
+        console.log("length is" + redactedDocs.length)
 
-        if (status.status === 'completed' && status.files && Array.isArray(status.files)) {
+
+        if (status.status === 'redacted' && status.files && Array.isArray(status.files)) {
           const docs: RedactedDocument[] = status.files.map((fileUrl, index) => {
             // Extract filename from URL or use generic name
             const urlParts = fileUrl.split('/');
@@ -70,17 +73,31 @@ export default function DocumentDetails() {
     fetchRedactionStatus();
   }, [id, toast]);
 
-  const isRedactionCompleted = redactionStatus?.status === 'completed';
+  const isRedactionCompleted = redactionStatus?.status === 'redacted';
 
   const handleApprove = async () => {
     setIsApproving(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    toast({
+    try{
+      const status = await isRedactionApproved(id);
+      if(status){
+        toast({
       title: 'Approved',
       description: 'Document generation will continue.',
     });
-    setIsApproving(false);
+      }
+    }
+    catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Failed to update request status';
+        setError(errorMsg);
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: errorMsg,
+        });
+      }
+      finally{
+        setIsApproving(false);
+      }
     navigate('/generated-docs');
   };
 
@@ -157,7 +174,7 @@ export default function DocumentDetails() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-3">
-              {redactionStatus?.status === 'completed' ? (
+              {redactionStatus?.status === 'redacted' ? (
                 <div className="h-8 w-8 rounded-full bg-green-500/20 flex items-center justify-center">
                   <CheckCircle2 className="h-5 w-5 text-green-600" />
                 </div>
@@ -173,7 +190,7 @@ export default function DocumentDetails() {
               <div className="flex-1">
                 <p className="font-medium capitalize">{redactionStatus?.status}</p>
                 <p className="text-sm text-muted-foreground">
-                  {redactionStatus?.message || (redactionStatus?.status === 'completed'
+                  {redactionStatus?.message || (redactionStatus?.status === 'redacted'
                     ? 'All documents have been redacted successfully'
                     : redactionStatus?.status === 'processing'
                     ? 'Redaction process is in progress...'
@@ -197,9 +214,9 @@ export default function DocumentDetails() {
             )}
           </CardContent>
         </Card>
-
         {/* Redacted Documents Section - Only show if completed */}
-        {isRedactionCompleted && redactedDocs.length > 0 ? (
+        {isRedactionCompleted && redactedDocs.length > 0 ? 
+        (
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">

@@ -12,6 +12,7 @@ export async function getDocumentsInfo(userId: string) {
   }
 
   const data = await res.json();
+  console.log(`documents ${data.documents}`)
   return data.documents;
 }
 
@@ -219,17 +220,15 @@ export async function startGenerationFlow(params: StartGenerationParams) {
 
 export type RedactionStatusResponse = {
   request_id: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  status: 'pending' | 'processing' | 'redacting' | 'redacted' | 'completed' | 'failed';
   files?: string[];
   message?: string;
 };
 
 export async function getRedactionStatus(requestId: string): Promise<RedactionStatusResponse> {
-  const res = await fetch(`https://312f713d9009.ngrok-free.app/redaction_status/${requestId}`, {
+  const res = await fetch(`https://text-to-document-generation-pdf-redaction-api.hf.space/redaction_status/${requestId}`, {
     method: 'GET',
-     headers: {
-    'ngrok-skip-browser-warning': 'true',
-  },
+     headers: {},
   });
 
   if (!res.ok) {
@@ -242,3 +241,37 @@ export async function getRedactionStatus(requestId: string): Promise<RedactionSt
   return data;
 } 
 
+export async function isRedactionApproved(requestId: string): Promise<boolean>{
+  const res = await fetch(`${BACKEND_URL}/requests/${requestId}/approve`,{
+    method:'POST',
+    headers:{}
+  });
+
+  if(!res.ok){
+    throw new Error('Failed to update the request status');
+  }
+
+  console.log('---printing response---')
+  console.log(res)
+  const data = await res.json();
+  return data.succeess;
+  
+}
+
+
+export async function redactionRejected(requestId: string): Promise<boolean>{
+  const res = await fetch(`${BACKEND_URL}/requests/${requestId}/reject`,{
+    method:'POST',
+    headers:{}
+  });
+
+  if(!res.ok){
+    throw new Error('Failed to update the request status');
+  }
+
+  console.log('---printing response---')
+  console.log(res)
+  const data = await res.json();
+  return data.succeess;
+  
+}
