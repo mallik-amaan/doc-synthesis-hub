@@ -45,15 +45,26 @@ export function DocumentRequestModal({ open, onOpenChange }: DocumentRequestModa
     numSolutions: 1,
     documentType: '',
     redaction: false,
-    seedDocument: null as File | null,
+    seedDocuments: [] as File[],
     visualAssets: [] as File[],
   });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setFormData(prev => ({ ...prev, seedDocument: file }));
+    const files = e.target.files;
+    if (files) {
+      const newFiles = Array.from(files);
+      setFormData(prev => ({ 
+        ...prev, 
+        seedDocuments: [...prev.seedDocuments, ...newFiles].slice(0, 10)
+      }));
     }
+  };
+
+  const removeSeedDocument = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      seedDocuments: prev.seedDocuments.filter((_, i) => i !== index)
+    }));
   };
 
   const handleVisualAssetsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -101,7 +112,7 @@ export function DocumentRequestModal({ open, onOpenChange }: DocumentRequestModa
     try {
       const response = await startGenerationFlow({
         userId: user.id,
-        seedFiles: formData.seedDocument ? [formData.seedDocument] : [],
+        seedFiles: formData.seedDocuments,
         visualFiles: formData.visualAssets,
         metadata: {
           documentName: formData.documentName,
@@ -297,7 +308,7 @@ export function DocumentRequestModal({ open, onOpenChange }: DocumentRequestModa
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="seedDocument">Seed Document Upload</Label>
+            <Label htmlFor="seedDocument">Seed Documents Upload</Label>
             <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
               <input
                 id="seedDocument"
@@ -305,19 +316,34 @@ export function DocumentRequestModal({ open, onOpenChange }: DocumentRequestModa
                 onChange={handleFileChange}
                 className="hidden"
                 accept=".pdf,.doc,.docx,.txt"
+                multiple
               />
               <label htmlFor="seedDocument" className="cursor-pointer">
                 <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                {formData.seedDocument ? (
-                  <p className="text-sm font-medium text-foreground">{formData.seedDocument.name}</p>
-                ) : (
-                  <>
-                    <p className="text-sm font-medium text-foreground">Click to upload or drag and drop</p>
-                    <p className="text-xs text-muted-foreground mt-1">PDF, DOC, DOCX, TXT (max 10MB)</p>
-                  </>
-                )}
+                <p className="text-sm font-medium text-foreground">Click to upload or drag and drop</p>
+                <p className="text-xs text-muted-foreground mt-1">PDF, DOC, DOCX, TXT (max 10 files)</p>
               </label>
             </div>
+            {formData.seedDocuments.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {formData.seedDocuments.map((file, index) => (
+                  <div 
+                    key={index} 
+                    className="flex items-center gap-2 bg-muted px-3 py-1.5 rounded-md text-sm"
+                  >
+                    <Upload className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="max-w-[120px] truncate">{file.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeSeedDocument(index)}
+                      className="text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
