@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Download, FileArchive, FileText, Calendar, Clock, MoreVertical, Eye, Trash2 } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -17,17 +17,21 @@ const BACKEND_URL = 'http://localhost:3000';
 
 export default function GeneratedDocs() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [generations, setGenerations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getDocumentsInfo('23')
+    // Check if we're coming from document generation (refresh cache)
+    const fromGeneration = location.state?.fromGeneration;
+    
+    getDocumentsInfo('23', fromGeneration)
       .then(data => setGenerations(data || []))
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [location.state]);
 
   const handleDownload = (type: 'docs' | 'groundTruth', generationId: string) => {
     toast({

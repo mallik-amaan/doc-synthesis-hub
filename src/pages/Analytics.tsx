@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Flag, Check, FileText, AlertCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Flag, Check, FileText, AlertCircle, Loader2 } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,6 +23,7 @@ export default function Analytics() {
 
 
   useEffect(() => {
+    setLoadingSessions(true)
     getDocumentsInfo('23')
       .then(setSessions)
       .catch(err => setErrorSessions(err.message))
@@ -97,50 +98,66 @@ export default function Analytics() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        {/* Loading State */}
+        {loadingSessions && (
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="text-center space-y-4">
+              <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+              <p className="text-center text-sm text-muted-foreground">
+                Loading sessions...
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-semibold text-foreground">Analytics & Review</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Verify and validate generated documents against ground truth
-          </p>
-        </div>
+        {!loadingSessions && (
+          <div>
+            <h1 className="text-3xl font-semibold text-foreground">Analytics & Review</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Verify and validate generated documents against ground truth
+            </p>
+          </div>
+        )}
 
         {/* Session Selector */}
-        <div className="stat-card">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="flex-1">
-              <label className="text-sm font-medium text-foreground mb-1.5 block">
-                Select Generation Session
-              </label>
-              <Select value={selectedSession} onValueChange={(value) => { 
-                setSelectedSession(value);
-                setCurrentDocIndex(0);
-                setFlaggedDocs(new Set());
-                setIsReviewComplete(false);
-              }}>
-                <SelectTrigger className="w-full sm:w-72">
-                  <SelectValue placeholder="Choose a session to review" />
-                </SelectTrigger>
-                <SelectContent className="bg-popover">
-                  {sessions.map(session => (
-                    <SelectItem key={session.id} value={session.id}>
-                      {session.metadata.documentName} ({session.numDocs} docs)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {selectedSession && (
-              <div className="flex items-center gap-3 text-sm">
-                <span className="badge-success">{totalDocs - flaggedDocs.size} Valid</span>
-                <span className="badge-destructive">{flaggedDocs.size} Flagged</span>
+        {!loadingSessions && (
+          <div className="stat-card">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex-1">
+                <label className="text-sm font-medium text-foreground mb-1.5 block">
+                  Select Generation Session
+                </label>
+                <Select value={selectedSession} onValueChange={(value) => { 
+                  setSelectedSession(value);
+                  setCurrentDocIndex(0);
+                  setFlaggedDocs(new Set());
+                  setIsReviewComplete(false);
+                }}>
+                  <SelectTrigger className="w-full sm:w-72">
+                    <SelectValue placeholder="Choose a session to review" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover">
+                    {sessions.map(session => (
+                      <SelectItem key={session.id} value={session.id}>
+                        {session.metadata.documentName} ({session.numDocs} docs)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            )}
+              {selectedSession && (
+                <div className="flex items-center gap-3 text-sm">
+                  <span className="badge-success">{totalDocs - flaggedDocs.size} Valid</span>
+                  <span className="badge-destructive">{flaggedDocs.size} Flagged</span>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Review Interface */}
-        {selectedSession && !isReviewComplete && (
+        {!loadingSessions && selectedSession && !isReviewComplete && (
           <div className="space-y-4">
             {/* Navigation */}
             <div className="flex items-center justify-between">
@@ -233,7 +250,7 @@ export default function Analytics() {
         )}
 
         {/* Review Summary */}
-        {isReviewComplete && (
+        {!loadingSessions && isReviewComplete && (
           <div className="stat-card text-center py-10">
             <Check className="h-12 w-12 text-success mx-auto mb-3" />
             <h2 className="text-xl font-semibold text-foreground mb-1">Review Complete</h2>
@@ -264,7 +281,7 @@ export default function Analytics() {
         )}
 
         {/* Empty State */}
-        {!selectedSession && (
+        {!loadingSessions && !selectedSession && (
           <div className="text-center py-16">
             <FileText className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
             <h3 className="text-sm font-semibold text-foreground">Select a session to start</h3>

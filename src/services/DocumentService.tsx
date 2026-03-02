@@ -1,6 +1,9 @@
 const BACKEND_URL = 'http://localhost:3000';
 
-export async function getDocumentsInfo(userId: string) {
+import { documentCache } from './DocumentCache';
+
+// Base function that actually fetches from API
+async function fetchDocumentsInfoFromAPI(userId: string) {
   const res = await fetch(`${BACKEND_URL}/docs/get-generated-docs`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -12,8 +15,23 @@ export async function getDocumentsInfo(userId: string) {
   }
 
   const data = await res.json();
-  console.log(`documents ${data.documents}`)
+  console.log(`documents ${data.documents}`);
   return data.documents;
+}
+
+// Main function with caching support
+export async function getDocumentsInfo(userId: string, forceRefresh: boolean = false) {
+  return documentCache.getDocuments(userId, fetchDocumentsInfoFromAPI, forceRefresh);
+}
+
+// Function to refresh the cache (call after new document generation)
+export async function refreshDocumentsCache(userId: string) {
+  return documentCache.refresh(userId, fetchDocumentsInfoFromAPI);
+}
+
+// Function to invalidate cache (call if you want to force next fetch)
+export function invalidateDocumentsCache() {
+  documentCache.invalidate();
 }
 
 export async function getDocumentBatch(batchId: string) {

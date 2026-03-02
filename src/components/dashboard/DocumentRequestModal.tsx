@@ -134,7 +134,7 @@ export function DocumentRequestModal({ open, onOpenChange }: DocumentRequestModa
 
       onOpenChange(false);
       setUploadProgress(null);
-      navigate('/generated-docs');
+      navigate('/generated-docs', { state: { fromGeneration: true } });
     } catch (error) {
       toast({
         variant: 'destructive',

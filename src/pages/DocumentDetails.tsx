@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Check, Circle, ArrowLeft, FileText, CheckCircle2, XCircle, Loader } from 'lucide-react';
+import { Check, Circle, ArrowLeft, FileText, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -111,9 +111,9 @@ export default function DocumentDetails() {
   if (isLoading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <Loader className="h-8 w-8 animate-spin text-primary mx-auto mb-3" />
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center space-y-4">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
             <p className="text-sm text-muted-foreground">Loading redaction status...</p>
           </div>
         </div>
@@ -282,7 +282,7 @@ export default function DocumentDetails() {
           <div className="stat-card">
             <h3 className="text-sm font-semibold text-foreground mb-3">Redacted Documents</h3>
             <div className="flex items-center gap-3 p-3 rounded-md bg-warning/8 border border-warning/20">
-              <Loader className="h-4 w-4 animate-spin text-warning" />
+              <Loader2 className="h-4 w-4 animate-spin text-warning" />
               <div>
                 <p className="text-sm font-medium text-foreground">Redaction in Progress</p>
                 <p className="text-xs text-muted-foreground">
