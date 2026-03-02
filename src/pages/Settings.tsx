@@ -16,14 +16,7 @@ export default function Settings() {
   const [driveConnected, setDriveConnected] = useState(false);
   const [driveEnabled, setDriveEnabled] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
-  //----------------------------------------------
-  //   useEffect(() => {
-  //   checkGoogleStatus();
-  // }, []);
-  //-----------------------------------------------------
 
-
-  // Mock API key - in production this would come from the backend
   const apiKey = 'sk-t2d-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
   
   const [formData, setFormData] = useState({
@@ -45,10 +38,7 @@ export default function Settings() {
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
     toast({
       title: 'Profile updated',
       description: 'Your profile has been successfully updated.',
@@ -80,13 +70,10 @@ export default function Settings() {
     setIsLoading(true);
     try {
       await changePassword(formData.currentPassword, formData.newPassword);
-      
       toast({
-        
         title: 'Password changed',
         description: 'Your password has been successfully updated.',
       });
-      
       setFormData(prev => ({
         ...prev,
         currentPassword: '',
@@ -129,43 +116,43 @@ export default function Settings() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-8 max-w-3xl">
+      <div className="space-y-6 max-w-2xl">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Settings</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-3xl font-semibold text-foreground">Settings</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             Manage your account and integrations
           </p>
         </div>
 
         {/* Profile Settings */}
         <div className="form-section">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <User className="h-5 w-5 text-primary" />
+          <div className="flex items-center gap-3 mb-5">
+            <div className="h-8 w-8 rounded-md bg-primary/8 flex items-center justify-center">
+              <User className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-foreground">Profile Settings</h2>
-              <p className="text-sm text-muted-foreground">Update your personal information</p>
+              <h3 className="text-sm font-semibold text-foreground">Profile Settings</h3>
+              <p className="text-xs text-muted-foreground">Update your personal information</p>
             </div>
           </div>
 
           <form onSubmit={handleProfileUpdate} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="name" className="text-sm">Full Name</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="name"
                     value={formData.name}
                     onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    className="pl-10"
+                    className="pl-9"
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-sm">Email Address</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -173,12 +160,12 @@ export default function Settings() {
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                    className="pl-10"
+                    className="pl-9"
                   />
                 </div>
               </div>
             </div>
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" size="sm" disabled={isLoading}>
               Save Changes
             </Button>
           </form>
@@ -186,19 +173,19 @@ export default function Settings() {
 
         {/* API Key */}
         <div className="form-section">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Key className="h-5 w-5 text-primary" />
+          <div className="flex items-center gap-3 mb-5">
+            <div className="h-8 w-8 rounded-md bg-primary/8 flex items-center justify-center">
+              <Key className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-foreground">API Key</h2>
-              <p className="text-sm text-muted-foreground">Use this key to access the API programmatically</p>
+              <h3 className="text-sm font-semibold text-foreground">API Key</h3>
+              <p className="text-xs text-muted-foreground">Use this key to access the API programmatically</p>
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="apiKey">Your API Key</Label>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="apiKey" className="text-sm">Your API Key</Label>
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Input
@@ -206,7 +193,7 @@ export default function Settings() {
                     type={showApiKey ? 'text' : 'password'}
                     value={apiKey}
                     readOnly
-                    className="pr-10 font-mono text-sm"
+                    className="pr-10 font-mono text-xs"
                   />
                   <button
                     type="button"
@@ -229,19 +216,19 @@ export default function Settings() {
 
         {/* Password Change */}
         <div className="form-section">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Lock className="h-5 w-5 text-primary" />
+          <div className="flex items-center gap-3 mb-5">
+            <div className="h-8 w-8 rounded-md bg-primary/8 flex items-center justify-center">
+              <Lock className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-foreground">Change Password</h2>
-              <p className="text-sm text-muted-foreground">Update your account password</p>
+              <h3 className="text-sm font-semibold text-foreground">Change Password</h3>
+              <p className="text-xs text-muted-foreground">Update your account password</p>
             </div>
           </div>
 
           <form onSubmit={handlePasswordChange} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="currentPassword">Current Password</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="currentPassword" className="text-sm">Current Password</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -249,13 +236,13 @@ export default function Settings() {
                   type="password"
                   value={formData.currentPassword}
                   onChange={(e) => setFormData(prev => ({ ...prev, currentPassword: e.target.value }))}
-                  className="pl-10"
+                  className="pl-9"
                 />
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="newPassword">New Password</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="newPassword" className="text-sm">New Password</Label>
                 <Input
                   id="newPassword"
                   type="password"
@@ -263,8 +250,8 @@ export default function Settings() {
                   onChange={(e) => setFormData(prev => ({ ...prev, newPassword: e.target.value }))}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="confirmPassword" className="text-sm">Confirm Password</Label>
                 <Input
                   id="confirmPassword"
                   type="password"
@@ -273,7 +260,7 @@ export default function Settings() {
                 />
               </div>
             </div>
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" size="sm" disabled={isLoading}>
               Update Password
             </Button>
           </form>
@@ -281,22 +268,21 @@ export default function Settings() {
 
         {/* Google Drive Integration */}
         <div className="form-section">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <HardDrive className="h-5 w-5 text-primary" />
+          <div className="flex items-center gap-3 mb-5">
+            <div className="h-8 w-8 rounded-md bg-primary/8 flex items-center justify-center">
+              <HardDrive className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-foreground">Google Drive Integration</h2>
-              <p className="text-sm text-muted-foreground">Connect your Drive for seed document uploads</p>
+              <h3 className="text-sm font-semibold text-foreground">Google Drive Integration</h3>
+              <p className="text-xs text-muted-foreground">Connect your Drive for seed document uploads</p>
             </div>
           </div>
 
-          <div className="space-y-6">
-            {/* Connection Status */}
-            <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-3">
-                <div className={`h-3 w-3 rounded-full ${driveConnected ? 'bg-success' : 'bg-muted-foreground'}`} />
-                <span className="font-medium text-foreground">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 rounded-md border border-border">
+              <div className="flex items-center gap-2.5">
+                <div className={`h-2 w-2 rounded-full ${driveConnected ? 'bg-success' : 'bg-muted-foreground/40'}`} />
+                <span className="text-sm font-medium text-foreground">
                   {driveConnected ? 'Connected' : 'Not Connected'}
                 </span>
               </div>
@@ -306,18 +292,17 @@ export default function Settings() {
                 </Button>
               ) : (
                 <Button size="sm" onClick={handleConnectDrive} disabled={isLoading}>
-                  <Link2 className="h-4 w-4 mr-2" />
+                  <Link2 className="h-4 w-4 mr-1.5" />
                   Connect Drive
                 </Button>
               )}
             </div>
 
-            {/* Enable Toggle */}
             {driveConnected && (
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-foreground">Enable Drive Uploads</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm font-medium text-foreground">Enable Drive Uploads</p>
+                  <p className="text-xs text-muted-foreground">
                     Allow uploading seed documents directly from Google Drive
                   </p>
                 </div>
@@ -329,9 +314,9 @@ export default function Settings() {
             )}
 
             {driveConnected && driveEnabled && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-success/10 text-success">
+              <div className="flex items-center gap-2 p-2.5 rounded-md bg-success/8 text-success">
                 <Check className="h-4 w-4" />
-                <span className="text-sm font-medium">
+                <span className="text-xs font-medium">
                   Drive uploads are enabled for document generation
                 </span>
               </div>

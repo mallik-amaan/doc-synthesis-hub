@@ -73,7 +73,7 @@ export function DocumentRequestModal({ open, onOpenChange }: DocumentRequestModa
       const newFiles = Array.from(files);
       setFormData(prev => ({ 
         ...prev, 
-        visualAssets: [...prev.visualAssets, ...newFiles].slice(0, 10) // Max 10 files
+        visualAssets: [...prev.visualAssets, ...newFiles].slice(0, 10)
       }));
     }
   };
@@ -172,41 +172,41 @@ export function DocumentRequestModal({ open, onOpenChange }: DocumentRequestModa
   if (uploadProgress && isSubmitting) {
     return (
       <Dialog open={open} onOpenChange={() => {}}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-xl font-semibold">Uploading Files</DialogTitle>
+            <DialogTitle className="text-base font-semibold">Uploading Files</DialogTitle>
           </DialogHeader>
-          <div className="space-y-6 py-4">
+          <div className="space-y-4 py-2">
             <div className="text-center">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
-                <Upload className="h-6 w-6 text-primary animate-pulse" />
+              <div className="h-10 w-10 rounded-lg bg-primary/8 flex items-center justify-center mx-auto mb-2">
+                <Upload className="h-5 w-5 text-primary animate-pulse" />
               </div>
-              <p className="text-sm text-muted-foreground">{getUploadPhaseLabel()}</p>
+              <p className="text-xs text-muted-foreground">{getUploadPhaseLabel()}</p>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">
                   {uploadProgress.currentFileIndex} of {uploadProgress.totalFiles} files
                 </span>
                 <span className="font-medium">{getUploadPercent()}%</span>
               </div>
-              <Progress value={getUploadPercent()} className="h-2" />
+              <Progress value={getUploadPercent()} className="h-1.5" />
             </div>
 
             {uploadProgress.currentFileName && (
-              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                <div className="h-8 w-8 rounded bg-primary/10 flex items-center justify-center">
+              <div className="flex items-center gap-2.5 p-2.5 border border-border rounded-md">
+                <div className="h-7 w-7 rounded-md bg-primary/8 flex items-center justify-center">
                   {uploadProgress.phase === 'visual' ? (
-                    <Image className="h-4 w-4 text-primary" />
+                    <Image className="h-3.5 w-3.5 text-primary" />
                   ) : (
-                    <Upload className="h-4 w-4 text-primary" />
+                    <Upload className="h-3.5 w-3.5 text-primary" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{uploadProgress.currentFileName}</p>
+                  <p className="text-xs font-medium truncate">{uploadProgress.currentFileName}</p>
                 </div>
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               </div>
             )}
           </div>
@@ -217,14 +217,14 @@ export function DocumentRequestModal({ open, onOpenChange }: DocumentRequestModa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl font-semibold">Request Document Generation</DialogTitle>
+          <DialogTitle className="text-base font-semibold">Request Document Generation</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="documentName">Document Name *</Label>
+        <form onSubmit={handleSubmit} className="space-y-5 py-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="documentName" className="text-sm">Document Name *</Label>
             <Input
               id="documentName"
               placeholder="Enter document name"
@@ -233,9 +233,9 @@ export function DocumentRequestModal({ open, onOpenChange }: DocumentRequestModa
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="language">Language *</Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="language" className="text-sm">Language *</Label>
               <Select
                 value={formData.language}
                 onValueChange={(value) => setFormData(prev => ({ ...prev, language: value }))}
@@ -251,8 +251,8 @@ export function DocumentRequestModal({ open, onOpenChange }: DocumentRequestModa
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="documentType">Document Type *</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="documentType" className="text-sm">Document Type *</Label>
               <Select
                 value={formData.documentType}
                 onValueChange={(value) => setFormData(prev => ({ ...prev, documentType: value }))}
@@ -269,20 +269,20 @@ export function DocumentRequestModal({ open, onOpenChange }: DocumentRequestModa
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="groundTruth">Ground Truth Specification *</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="groundTruth" className="text-sm">Ground Truth Specification *</Label>
             <Textarea
               id="groundTruth"
               placeholder="Enter ground truth specification..."
               value={formData.groundTruth}
               onChange={(e) => setFormData(prev => ({ ...prev, groundTruth: e.target.value }))}
-              className="min-h-[120px] font-mono text-sm"
+              className="min-h-[100px] font-mono text-xs"
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="numSolutions">Number of Solutions</Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="numSolutions" className="text-sm">Number of Solutions</Label>
               <Input
                 id="numSolutions"
                 type="number"
@@ -293,23 +293,23 @@ export function DocumentRequestModal({ open, onOpenChange }: DocumentRequestModa
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>Redaction</Label>
-              <div className="flex items-center gap-3 h-10">
+            <div className="space-y-1.5">
+              <Label className="text-sm">Redaction</Label>
+              <div className="flex items-center gap-2.5 h-10">
                 <Switch
                   checked={formData.redaction}
                   onCheckedChange={(checked) => setFormData(prev => ({ ...prev, redaction: checked }))}
                 />
-                <span className="text-sm text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   {formData.redaction ? 'Enabled' : 'Disabled'}
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="seedDocument">Seed Documents Upload</Label>
-            <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
+          <div className="space-y-1.5">
+            <Label htmlFor="seedDocument" className="text-sm">Seed Documents Upload</Label>
+            <div className="border border-dashed border-border rounded-lg p-5 text-center hover:border-primary/40 transition-colors">
               <input
                 id="seedDocument"
                 type="file"
@@ -319,26 +319,26 @@ export function DocumentRequestModal({ open, onOpenChange }: DocumentRequestModa
                 multiple
               />
               <label htmlFor="seedDocument" className="cursor-pointer">
-                <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                <p className="text-sm font-medium text-foreground">Click to upload or drag and drop</p>
-                <p className="text-xs text-muted-foreground mt-1">PDF, DOC, DOCX, TXT (max 10 files)</p>
+                <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-1.5" />
+                <p className="text-xs font-medium text-foreground">Click to upload or drag and drop</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">PDF, DOC, DOCX, TXT (max 10 files)</p>
               </label>
             </div>
             {formData.seedDocuments.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-3">
+              <div className="flex flex-wrap gap-1.5 mt-2">
                 {formData.seedDocuments.map((file, index) => (
                   <div 
                     key={index} 
-                    className="flex items-center gap-2 bg-muted px-3 py-1.5 rounded-md text-sm"
+                    className="flex items-center gap-1.5 border border-border px-2 py-1 rounded-md text-xs"
                   >
-                    <Upload className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="max-w-[120px] truncate">{file.name}</span>
+                    <Upload className="h-3 w-3 text-muted-foreground" />
+                    <span className="max-w-[100px] truncate">{file.name}</span>
                     <button
                       type="button"
                       onClick={() => removeSeedDocument(index)}
                       className="text-muted-foreground hover:text-destructive transition-colors"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="h-3 w-3" />
                     </button>
                   </div>
                 ))}
@@ -346,9 +346,9 @@ export function DocumentRequestModal({ open, onOpenChange }: DocumentRequestModa
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="visualAssets">Visual Assets (Logos, Stamps, etc.)</Label>
-            <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
+          <div className="space-y-1.5">
+            <Label htmlFor="visualAssets" className="text-sm">Visual Assets (Logos, Stamps, etc.)</Label>
+            <div className="border border-dashed border-border rounded-lg p-5 text-center hover:border-primary/40 transition-colors">
               <input
                 id="visualAssets"
                 type="file"
@@ -358,26 +358,26 @@ export function DocumentRequestModal({ open, onOpenChange }: DocumentRequestModa
                 multiple
               />
               <label htmlFor="visualAssets" className="cursor-pointer">
-                <Image className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                <p className="text-sm font-medium text-foreground">Upload logos, stamps, signatures</p>
-                <p className="text-xs text-muted-foreground mt-1">PNG, JPG, SVG (max 10 files)</p>
+                <Image className="h-6 w-6 mx-auto text-muted-foreground mb-1.5" />
+                <p className="text-xs font-medium text-foreground">Upload logos, stamps, signatures</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">PNG, JPG, SVG (max 10 files)</p>
               </label>
             </div>
             {formData.visualAssets.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-3">
+              <div className="flex flex-wrap gap-1.5 mt-2">
                 {formData.visualAssets.map((file, index) => (
                   <div 
                     key={index} 
-                    className="flex items-center gap-2 bg-muted px-3 py-1.5 rounded-md text-sm"
+                    className="flex items-center gap-1.5 border border-border px-2 py-1 rounded-md text-xs"
                   >
-                    <Image className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="max-w-[120px] truncate">{file.name}</span>
+                    <Image className="h-3 w-3 text-muted-foreground" />
+                    <span className="max-w-[100px] truncate">{file.name}</span>
                     <button
                       type="button"
                       onClick={() => removeVisualAsset(index)}
                       className="text-muted-foreground hover:text-destructive transition-colors"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="h-3 w-3" />
                     </button>
                   </div>
                 ))}
@@ -385,13 +385,13 @@ export function DocumentRequestModal({ open, onOpenChange }: DocumentRequestModa
             )}
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <div className="flex justify-end gap-2 pt-3 border-t border-border">
+            <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" variant="cta" disabled={isSubmitting}>
+            <Button type="submit" size="sm" disabled={isSubmitting}>
               {isSubmitting ? (
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+                <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
               ) : (
                 'Generate Document'
               )}
