@@ -9,12 +9,19 @@ export default {
       center: true,
       padding: "2rem",
       screens: {
-        "2xl": "1400px",
+        "2xl": "1200px",
       },
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+      },
+      maxWidth: {
+        'container': '1200px',
+      },
+      spacing: {
+        '18': '4.5rem',
+        '22': '5.5rem',
       },
       colors: {
         border: "hsl(var(--border))",
@@ -71,15 +78,9 @@ export default {
         },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
-      },
-      boxShadow: {
-        'card': 'var(--shadow-card)',
-        'sm': 'var(--shadow-sm)',
-        'md': 'var(--shadow-md)',
-        'lg': 'var(--shadow-lg)',
+        lg: "8px",
+        md: "6px",
+        sm: "4px",
       },
       keyframes: {
         "accordion-down": {
@@ -95,7 +96,7 @@ export default {
           "50%": { opacity: "0.7" },
         },
         "slide-in": {
-          from: { opacity: "0", transform: "translateY(10px)" },
+          from: { opacity: "0", transform: "translateY(4px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
       },
@@ -103,7 +104,7 @@ export default {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "pulse-subtle": "pulse-subtle 2s ease-in-out infinite",
-        "slide-in": "slide-in 0.3s ease-out",
+        "slide-in": "slide-in 0.2s ease-out",
       },
     },
   },

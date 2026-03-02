@@ -64,128 +64,124 @@ export default function Signup() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left Panel - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-sidebar flex-col justify-between p-12">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-            <FileStack className="h-6 w-6 text-primary-foreground" />
+      {/* Left Panel */}
+      <div className="hidden lg:flex lg:w-1/2 bg-secondary border-r border-border flex-col justify-between p-12">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
+            <FileStack className="h-4 w-4 text-primary-foreground" />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-sidebar-foreground">DocSynth</h1>
-            <p className="text-sm text-sidebar-muted">Text-to-Document Synthesis</p>
-          </div>
+          <span className="text-sm font-semibold text-foreground">DocSynth</span>
         </div>
         
-        <div className="space-y-6">
-          <h2 className="text-4xl font-bold text-sidebar-foreground leading-tight">
-            Start synthesizing
-            <span className="text-primary block">documents today</span>
+        <div className="space-y-4 max-w-md">
+          <h2 className="text-foreground leading-tight">
+            Start synthesizing<br />documents today
           </h2>
-          <p className="text-lg text-sidebar-muted max-w-md">
+          <p className="text-muted-foreground">
             Join the platform that streamlines document generation with intelligent verification and analytics.
           </p>
         </div>
         
-        <p className="text-sm text-sidebar-muted">
-          Final Year Project • Research Platform
+        <p className="text-xs text-muted-foreground">
+          Final Year Project · Research Platform
         </p>
       </div>
 
-      {/* Right Panel - Signup Form */}
+      {/* Right Panel */}
       <div className="flex-1 flex items-center justify-center p-8 bg-background">
-        <div className="w-full max-w-md space-y-8">
-          <div className="lg:hidden flex items-center gap-3 justify-center mb-8">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-              <FileStack className="h-6 w-6 text-primary-foreground" />
+        <div className="w-full max-w-sm space-y-8">
+          <div className="lg:hidden flex items-center gap-2.5 justify-center mb-8">
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
+              <FileStack className="h-4 w-4 text-primary-foreground" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground">DocSynth</h1>
+            <span className="text-sm font-semibold text-foreground">DocSynth</span>
           </div>
 
-          <div className="text-center lg:text-left">
-            <h2 className="text-3xl font-bold text-foreground">Create an account</h2>
-            <p className="mt-2 text-muted-foreground">
+          <div className="text-left">
+            <h2 className="text-foreground">Create an account</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
               Get started with document synthesis
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="name">Full name</Label>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="name" className="text-sm">Full name</Label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="name"
                   type="text"
                   placeholder="John Doe"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="pl-10 h-12"
+                  className="pl-9 h-10"
                   required
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email address</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-sm">Email address</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="email"
                   type="email"
                   placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 h-12"
+                  className="pl-9 h-10"
                   required
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="password" className="text-sm">Password</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="password"
                   type="password"
                   placeholder="Create a password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 h-12"
+                  className="pl-9 h-10"
                   required
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm password</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="confirmPassword" className="text-sm">Confirm password</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="confirmPassword"
                   type="password"
                   placeholder="Confirm your password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="pl-10 h-12"
+                  className="pl-9 h-10"
                   required
                 />
               </div>
             </div>
 
-            <Button type="submit" size="xl" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full h-10" disabled={isLoading}>
               {isLoading ? (
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
               ) : (
                 <>
                   Create account
-                  <ArrowRight className="h-5 w-5" />
+                  <ArrowRight className="h-4 w-4 ml-1" />
                 </>
               )}
             </Button>
           </form>
 
-          <p className="text-center text-muted-foreground">
+          <p className="text-center text-sm text-muted-foreground">
             Already have an account?{' '}
             <Link to="/login" className="font-medium text-primary hover:underline">
               Sign in

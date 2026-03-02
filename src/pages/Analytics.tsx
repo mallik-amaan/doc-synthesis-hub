@@ -31,7 +31,6 @@ export default function Analytics() {
   }, []);
 
   function getDrivePreviewUrl(driveUrl) {
-    // Regular expression to extract file ID from different types of Google Drive URLs
     const regex = /\/d\/([a-zA-Z0-9_-]+)|id=([a-zA-Z0-9_-]+)/;
     const match = driveUrl.match(regex);
 
@@ -39,17 +38,13 @@ export default function Analytics() {
       throw new Error("Invalid Google Drive URL");
     }
 
-    // File ID could be in group 1 or 2
     const fileId = match[1] || match[2];
-
-    // Construct preview URL
     return `https://drive.google.com/file/d/${fileId}/preview`;
   }
 
   const session = sessions.find(s => s.id === selectedSession);
   const totalDocs = session?.metadata.numSolutions || 0;
   const pdfToRender = "https://drive.google.com/file/d/1EzUn4OumAOyPtyfbEPNATVACq0su9gxd/preview"
-  //get Details of the current session
 
   const handlePrevious = () => {
     setCurrentDocIndex(prev => Math.max(0, prev - 1));
@@ -101,11 +96,11 @@ export default function Analytics() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-8">
+      <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Analytics & Review</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-3xl font-semibold text-foreground">Analytics & Review</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             Verify and validate generated documents against ground truth
           </p>
         </div>
@@ -114,7 +109,7 @@ export default function Analytics() {
         <div className="stat-card">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex-1">
-              <label className="text-sm font-medium text-foreground mb-2 block">
+              <label className="text-sm font-medium text-foreground mb-1.5 block">
                 Select Generation Session
               </label>
               <Select value={selectedSession} onValueChange={(value) => { 
@@ -123,7 +118,7 @@ export default function Analytics() {
                 setFlaggedDocs(new Set());
                 setIsReviewComplete(false);
               }}>
-                <SelectTrigger className="w-full sm:w-80">
+                <SelectTrigger className="w-full sm:w-72">
                   <SelectValue placeholder="Choose a session to review" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover">
@@ -136,7 +131,7 @@ export default function Analytics() {
               </Select>
             </div>
             {selectedSession && (
-              <div className="flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-3 text-sm">
                 <span className="badge-success">{totalDocs - flaggedDocs.size} Valid</span>
                 <span className="badge-destructive">{flaggedDocs.size} Flagged</span>
               </div>
@@ -146,20 +141,21 @@ export default function Analytics() {
 
         {/* Review Interface */}
         {selectedSession && !isReviewComplete && (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {/* Navigation */}
             <div className="flex items-center justify-between">
               <Button
                 variant="outline"
+                size="sm"
                 onClick={handlePrevious}
                 disabled={currentDocIndex === 0}
               >
-                <ChevronLeft className="h-4 w-4 mr-2" />
+                <ChevronLeft className="h-4 w-4 mr-1" />
                 Previous
               </Button>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Document</span>
-                <span className="font-semibold text-foreground">
+                <span className="text-xs text-muted-foreground">Document</span>
+                <span className="text-sm font-medium text-foreground">
                   {currentDocIndex + 1} / {totalDocs}
                 </span>
                 {flaggedDocs.has(currentDocIndex) && (
@@ -168,49 +164,40 @@ export default function Analytics() {
               </div>
               <Button
                 variant="outline"
+                size="sm"
                 onClick={handleNext}
               >
                 {currentDocIndex === totalDocs - 1 ? 'Finish Review' : 'Next'}
-                <ChevronRight className="h-4 w-4 ml-2" />
+                <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             </div>
 
             {/* Document Comparison */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Generated Document (PDF) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className="review-panel">
-                <div className="flex items-center gap-2 mb-4">
-                  <FileText className="h-5 w-5 text-primary" />
-                  <h3 className="font-semibold text-foreground">Generated Document (PDF)</h3>
+                <div className="flex items-center gap-2 mb-3">
+                  <FileText className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-semibold text-foreground">Generated Document (PDF)</h3>
                 </div>
-                {
-                  pdfToRender ?
-                    (
-                      <iframe height={500} width={500} src={pdfToRender} />
-                    )
-                    :
-                    (
-                      <div className="text-muted-foreground">No PDF available to preview.</div>
-                    )}
+                {pdfToRender ? (
+                  <iframe height={500} width="100%" src={pdfToRender} className="rounded-md border border-border" />
+                ) : (
+                  <div className="text-sm text-muted-foreground">No PDF available to preview.</div>
+                )}
               </div>
 
-              {/* Ground Truth (Text) */}
               <div className="review-panel">
-                <div className="flex items-center gap-2 mb-4">
-                  <Check className="h-5 w-5 text-success" />
-                  <h3 className="font-semibold text-foreground">Ground Truth</h3>
+                <div className="flex items-center gap-2 mb-3">
+                  <Check className="h-4 w-4 text-success" />
+                  <h3 className="text-sm font-semibold text-foreground">Ground Truth</h3>
                 </div>
-                <div className="bg-muted/50 rounded-lg p-4 min-h-[400px] font-mono text-sm whitespace-pre-wrap text-foreground">
-                  {
-                    pdfToRender ?
-                      (
-                        <iframe height={500} width={500} src={pdfToRender} />
-                      )
-                      :
-                      (
-                        <div className="text-muted-foreground">No PDF available to preview.</div>
-                      )}      
-                                </div>
+                <div className="bg-secondary rounded-md p-4 min-h-[400px] font-mono text-sm whitespace-pre-wrap text-foreground border border-border">
+                  {pdfToRender ? (
+                    <iframe height={500} width="100%" src={pdfToRender} className="rounded-md" />
+                  ) : (
+                    <div className="text-muted-foreground">No PDF available to preview.</div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -218,26 +205,26 @@ export default function Analytics() {
             <div className="flex justify-center">
               <Button
                 variant={flaggedDocs.has(currentDocIndex) ? 'destructive' : 'outline'}
-                size="lg"
+                size="sm"
                 onClick={handleFlag}
-                className="gap-2"
+                className="gap-1.5"
               >
-                <Flag className="h-5 w-5" />
+                <Flag className="h-4 w-4" />
                 {flaggedDocs.has(currentDocIndex) ? 'Unflag Output' : 'Flag as Mismatch'}
               </Button>
             </div>
 
             {/* Progress Dots */}
-            <div className="flex justify-center gap-1.5 flex-wrap max-w-2xl mx-auto">
+            <div className="flex justify-center gap-1 flex-wrap max-w-xl mx-auto">
               {Array.from({ length: totalDocs }).map((_, index) => (
                 <button
                   key={index}
                   onClick={() => setCurrentDocIndex(index)}
-                  className={`h-2.5 w-2.5 rounded-full transition-all ${index === currentDocIndex
+                  className={`h-2 w-2 rounded-full transition-all ${index === currentDocIndex
                       ? 'bg-primary scale-125'
                       : flaggedDocs.has(index)
                         ? 'bg-destructive'
-                        : 'bg-muted hover:bg-muted-foreground/30'
+                        : 'bg-border hover:bg-muted-foreground/30'
                     }`}
                 />
               ))}
@@ -247,29 +234,29 @@ export default function Analytics() {
 
         {/* Review Summary */}
         {isReviewComplete && (
-          <div className="stat-card text-center py-12 animate-slide-in">
-            <Check className="h-16 w-16 text-success mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-foreground mb-2">Review Complete</h2>
-            <p className="text-muted-foreground mb-6">
+          <div className="stat-card text-center py-10">
+            <Check className="h-12 w-12 text-success mx-auto mb-3" />
+            <h2 className="text-xl font-semibold text-foreground mb-1">Review Complete</h2>
+            <p className="text-sm text-muted-foreground mb-6">
               You've reviewed all {totalDocs} documents in this session.
             </p>
 
-            <div className="flex justify-center gap-8 mb-8">
+            <div className="flex justify-center gap-8 mb-6">
               <div className="text-center">
-                <p className="text-4xl font-bold text-success">{totalDocs - flaggedDocs.size}</p>
-                <p className="text-sm text-muted-foreground">Valid Documents</p>
+                <p className="text-3xl font-semibold text-success">{totalDocs - flaggedDocs.size}</p>
+                <p className="text-xs text-muted-foreground">Valid Documents</p>
               </div>
               <div className="text-center">
-                <p className="text-4xl font-bold text-destructive">{flaggedDocs.size}</p>
-                <p className="text-sm text-muted-foreground">Flagged Documents</p>
+                <p className="text-3xl font-semibold text-destructive">{flaggedDocs.size}</p>
+                <p className="text-xs text-muted-foreground">Flagged Documents</p>
               </div>
             </div>
 
-            <div className="flex justify-center gap-4">
-              <Button variant="outline" onClick={resetReview}>
+            <div className="flex justify-center gap-3">
+              <Button variant="outline" size="sm" onClick={resetReview}>
                 Review Again
               </Button>
-              <Button variant="cta" onClick={handleSubmitReview}>
+              <Button size="sm" onClick={handleSubmitReview}>
                 Submit Review
               </Button>
             </div>
@@ -279,9 +266,9 @@ export default function Analytics() {
         {/* Empty State */}
         {!selectedSession && (
           <div className="text-center py-16">
-            <FileText className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-foreground">Select a session to start</h3>
-            <p className="text-muted-foreground mt-1">
+            <FileText className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
+            <h3 className="text-sm font-semibold text-foreground">Select a session to start</h3>
+            <p className="text-xs text-muted-foreground mt-1">
               Choose a generation session from the dropdown above to begin the review process.
             </p>
           </div>

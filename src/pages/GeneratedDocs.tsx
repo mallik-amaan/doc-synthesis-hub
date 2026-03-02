@@ -37,17 +37,15 @@ export default function GeneratedDocs() {
   };
 
   const formatDate = (dateString: string) => {
-  if (!dateString) return "";
-
-  const date = new Date(dateString);
-
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC" // ensures consistent output across servers
-  });
-};
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      timeZone: "UTC"
+    });
+  };
 
   const formatTime = (dateString: string) => {
     return new Date(dateString).toLocaleTimeString('en-US', {
@@ -58,28 +56,27 @@ export default function GeneratedDocs() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-8">
+      <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Generated Documents</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-3xl font-semibold text-foreground">Generated Documents</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             View and download your generated document batches
           </p>
         </div>
 
         {/* Documents Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {generations.map((generation) => (
-            <div key={generation.id} className="doc-card animate-slide-in">
-              {/* Header */}
-              <div className="flex items-start justify-between mb-4">
+            <div key={generation.id} className="doc-card">
+              <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <FileText className="h-6 w-6 text-primary" />
+                  <div className="h-10 w-10 rounded-lg bg-primary/8 flex items-center justify-center">
+                    <FileText className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground">{generation.metadata.documentName}</h3>
-                    <p className="text-sm text-muted-foreground">{generation.documentType}</p>
+                    <h3 className="text-sm font-semibold text-foreground">{generation.metadata.documentName}</h3>
+                    <p className="text-xs text-muted-foreground">{generation.documentType}</p>
                   </div>
                 </div>
                 <DropdownMenu>
@@ -101,38 +98,38 @@ export default function GeneratedDocs() {
                 </DropdownMenu>
               </div>
 
-              {/* Meta Info */}
-              <div className="flex items-center gap-4 mb-4 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <Calendar className="h-4 w-4" />
+              <div className="flex items-center gap-3 mb-3 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-3.5 w-3.5" />
                   {formatDate(generation.created_at)}
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <Clock className="h-4 w-4" />
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5" />
                   {formatTime(generation.created_at)}
                 </span>
                 <span className="badge-success">{generation.numDocs} docs</span>
               </div>
 
-              {/* Download Buttons */}
-              <div className="grid grid-cols-2 gap-3 pt-4 border-t border-border">
+              <div className="grid grid-cols-2 gap-2 pt-3 border-t border-border">
                 <Button
                   variant="outline"
-                  className="gap-2"
+                  size="sm"
+                  className="gap-1.5 text-xs"
                   onClick={() => handleDownload('docs', generation.id)}
                 >
-                  <FileArchive className="h-4 w-4" />
+                  <FileArchive className="h-3.5 w-3.5" />
                   <span className="truncate">Generated Docs</span>
-                  <Download className="h-4 w-4 ml-auto" />
+                  <Download className="h-3.5 w-3.5 ml-auto" />
                 </Button>
                 <Button
                   variant="outline"
-                  className="gap-2"
+                  size="sm"
+                  className="gap-1.5 text-xs"
                   onClick={() => handleDownload('groundTruth', generation.id)}
                 >
-                  <FileArchive className="h-4 w-4" />
+                  <FileArchive className="h-3.5 w-3.5" />
                   <span className="truncate">Ground Truth</span>
-                  <Download className="h-4 w-4 ml-auto" />
+                  <Download className="h-3.5 w-3.5 ml-auto" />
                 </Button>
               </div>
             </div>
@@ -141,27 +138,27 @@ export default function GeneratedDocs() {
 
         {/* Loading State */}
         {loading && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="doc-card animate-slide-in">
-                <div className="flex items-start justify-between mb-4">
+              <div key={i} className="stat-card">
+                <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <Skeleton className="h-12 w-12 rounded-xl" />
+                    <Skeleton className="h-10 w-10 rounded-lg" />
                     <div>
-                      <Skeleton className="h-5 w-32 mb-2" />
-                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-4 w-28 mb-1.5" />
+                      <Skeleton className="h-3 w-20" />
                     </div>
                   </div>
-                  <Skeleton className="h-8 w-8 rounded" />
+                  <Skeleton className="h-8 w-8 rounded-md" />
                 </div>
-                <div className="flex items-center gap-4 mb-4">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-16" />
-                  <Skeleton className="h-5 w-16 rounded-full" />
+                <div className="flex items-center gap-3 mb-3">
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-3 w-14" />
+                  <Skeleton className="h-4 w-14 rounded-md" />
                 </div>
-                <div className="grid grid-cols-2 gap-3 pt-4 border-t border-border">
-                  <Skeleton className="h-10 w-full rounded" />
-                  <Skeleton className="h-10 w-full rounded" />
+                <div className="grid grid-cols-2 gap-2 pt-3 border-t border-border">
+                  <Skeleton className="h-9 w-full rounded-md" />
+                  <Skeleton className="h-9 w-full rounded-md" />
                 </div>
               </div>
             ))}
@@ -171,9 +168,9 @@ export default function GeneratedDocs() {
         {/* Empty State */}
         {!loading && generations.length === 0 && (
           <div className="text-center py-16">
-            <FileText className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-foreground">No documents generated yet</h3>
-            <p className="text-muted-foreground mt-1">
+            <FileText className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
+            <h3 className="text-sm font-semibold text-foreground">No documents generated yet</h3>
+            <p className="text-xs text-muted-foreground mt-1">
               Start by requesting a document generation from the dashboard.
             </p>
           </div>

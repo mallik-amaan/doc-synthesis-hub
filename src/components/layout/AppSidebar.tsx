@@ -22,21 +22,21 @@ export function AppSidebar() {
   const { logout, user } = useAuth();
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-sidebar border-r border-sidebar-border">
+    <aside className="fixed left-0 top-0 z-40 h-screen w-56 bg-card border-r border-border">
       <div className="flex h-full flex-col">
         {/* Logo */}
-        <div className="flex items-center gap-3 px-6 py-6 border-b border-sidebar-border">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-            <FileStack className="h-5 w-5 text-primary-foreground" />
+        <div className="flex items-center gap-2.5 px-5 py-5 border-b border-border">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
+            <FileStack className="h-4 w-4 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-sidebar-foreground">DocSynth</h1>
-            <p className="text-xs text-sidebar-muted">FYP Platform</p>
+            <h1 className="text-sm font-semibold text-foreground leading-none">DocSynth</h1>
+            <p className="text-[11px] text-muted-foreground mt-0.5">FYP Platform</p>
           </div>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-1 px-3 py-4">
+        <nav className="flex-1 space-y-0.5 px-3 py-3">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
@@ -48,7 +48,7 @@ export function AppSidebar() {
                   isActive && 'sidebar-link-active'
                 )}
               >
-                <item.icon className="h-5 w-5" />
+                <item.icon className="h-4 w-4" />
                 <span>{item.label}</span>
               </Link>
             );
@@ -56,16 +56,16 @@ export function AppSidebar() {
         </nav>
 
         {/* User section & Logout */}
-        <div className="border-t border-sidebar-border p-4">
-          <div className="mb-3 px-4 py-2">
-            <p className="text-sm font-medium text-sidebar-foreground truncate">{user?.name}</p>
-            <p className="text-xs text-sidebar-muted truncate">{user?.email}</p>
+        <div className="border-t border-border p-3">
+          <div className="mb-2 px-3 py-1.5">
+            <p className="text-sm font-medium text-foreground truncate">{user?.name}</p>
+            <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
           </div>
           <button
             onClick={logout}
-            className="sidebar-link w-full text-destructive hover:bg-destructive/10 hover:text-destructive"
+            className="sidebar-link w-full text-destructive hover:bg-destructive/5 hover:text-destructive"
           >
-            <LogOut className="h-5 w-5" />
+            <LogOut className="h-4 w-4" />
             <span>Logout</span>
           </button>
         </div>
