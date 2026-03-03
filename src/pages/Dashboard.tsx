@@ -4,17 +4,42 @@ import { FileText, FileCheck, AlertTriangle, TrendingUp, Plus, Clock, CheckCircl
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
 import { getDashboardStats } from '@/services/DocumentService';
+import { activeRequests, docTypeBreakdown } from '@/services/AnalyticsService';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [stats, setStats] = useState([])
+const { user } = useAuth();
+const [isModalOpen, setIsModalOpen] = useState(false);
+const [stats, setStats] = useState<any>({});
+const [activeReqs, setActiveReqs] = useState<any[]>([]);
+const [typeBreakdown, setTypeBreakdown] = useState<any[]>([]);
+const [loading, setLoading] = useState(true);
   useEffect(() => {
-    const userId = '1234';
-    getDashboardStats(userId)
-      .then(data => setStats(data))
-      .catch(err => console.error('Error fetching dashboard stats:', err));
-  }, []);
+    if (!user) return;
+    
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [dashboardStats, activeRequestsData, typeBreakdownData] = await Promise.all([
+          getDashboardStats(user.id),
+          activeRequests(user.id),
+          docTypeBreakdown(user.id)
+        ]);
+        
+        setStats(dashboardStats);
+        setActiveReqs(activeRequestsData);
+        setTypeBreakdown(typeBreakdownData);
+      } catch (err) {
+        console.error('Error fetching dashboard data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user]);
 
   return (
     <DashboardLayout>
@@ -73,20 +98,20 @@ export default function Dashboard() {
           {/* Active Requests */}
           <div className="stat-card">
             <h3 className="text-sm font-semibold text-foreground mb-4">Active Requests</h3>
-            {stats['activeRequests']?.length > 0 ? (
+            {activeReqs.length > 0 ? (
               <div className="space-y-2">
-                {stats['activeRequests']?.map((req: any, i: number) => (
+                {activeReqs.map((req: any, i: number) => (
                   <div key={i} className="flex items-center justify-between p-3 rounded-md border border-border hover:bg-accent transition-colors">
                     <div className="flex items-center gap-3">
                       <div className={`h-8 w-8 rounded-md flex items-center justify-center ${
                         req.status === 'completed' ? 'bg-success/8' :
                         req.status === 'failed' ? 'bg-destructive/8' :
-                        req.status === 'review' ? 'bg-warning/8' :
+                        req.status === 'approved' || req.status === 'review' ? 'bg-warning/8' :
                         'bg-primary/8'
                       }`}>
                         {req.status === 'completed' ? <CheckCircle2 className="h-4 w-4 text-success" /> :
                          req.status === 'failed' ? <XCircle className="h-4 w-4 text-destructive" /> :
-                         req.status === 'review' ? <Eye className="h-4 w-4 text-warning" /> :
+                         req.status === 'approved' || req.status === 'review' ? <Eye className="h-4 w-4 text-warning" /> :
                          <Clock className="h-4 w-4 text-primary" />}
                       </div>
                       <div>
@@ -96,6 +121,8 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-center gap-2">
                       {req.status === 'processing' && <span className="badge-default text-xs">Processing</span>}
+                      {req.status === 'pending' && <span className="badge-default text-xs">Pending</span>}
+                      {req.status === 'approved' && <span className="badge-warning text-xs">Approved</span>}
                       {req.status === 'review' && <span className="badge-warning text-xs">Needs Review</span>}
                       {req.status === 'completed' && <span className="badge-success text-xs">Completed</span>}
                       {req.status === 'failed' && <span className="badge-destructive text-xs">Failed</span>}
@@ -125,9 +152,9 @@ export default function Dashboard() {
           {/* Document Type Breakdown */}
           <div className="stat-card">
             <h3 className="text-sm font-semibold text-foreground mb-4">Document Type Breakdown</h3>
-            {stats['typeBreakdown']?.length > 0 ? (
+            {typeBreakdown.length > 0 ? (
               <div className="space-y-3">
-                {stats['typeBreakdown']?.map((item: any, i: number) => (
+                {typeBreakdown.map((item: any, i: number) => (
                   <div key={i} className="space-y-1.5">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">{item.type}</span>

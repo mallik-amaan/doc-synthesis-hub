@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Check, Circle, ArrowLeft, FileText, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { Check, Circle, ArrowLeft, FileText, CheckCircle2, XCircle, Loader2, Download } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { PDFViewer } from '@/components/analytics/PDFViewer';
-import { getRedactionStatus, isRedactionApproved, type RedactionStatusResponse } from '@/services/DocumentService';
+import { getDownloadLink, getRedactionStatus, isRedactionApproved, type RedactionStatusResponse } from '@/services/DocumentService';
 
 interface RedactedDocument {
   id: string;
@@ -108,13 +108,46 @@ export default function DocumentDetails() {
     navigate('/generated-docs');
   };
 
+  const handleDownload = async () => {
+    if (!id) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Missing request ID.',
+      });
+      return;
+    }
+
+    try {
+      const url = await getDownloadLink(id);
+      const link = document.createElement('a');
+      link.href = url;
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: 'Download started',
+        description: 'Downloading generated documents...',
+      });
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to download documents';
+      toast({
+        variant: 'destructive',
+        title: 'Download failed',
+        description: errorMsg,
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center space-y-4">
             <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-            <p className="text-sm text-muted-foreground">Loading redaction status...</p>
+            <p className="text-sm text-muted-foreground">Loading request status...</p>
           </div>
         </div>
       </DashboardLayout>
@@ -165,9 +198,9 @@ export default function DocumentDetails() {
 
         {/* Redaction Status Section */}
         <div className="stat-card">
-          <h3 className="text-sm font-semibold text-foreground mb-3">Redaction Status</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-3">Request Status</h3>
           <div className="flex items-center gap-3">
-            {redactionStatus?.status === 'redacted' ? (
+            {redactionStatus?.status === 'redacted' || redactionStatus?.status === 'approved' ? (
               <div className="h-7 w-7 rounded-md bg-success/10 flex items-center justify-center">
                 <CheckCircle2 className="h-4 w-4 text-success" />
               </div>
@@ -278,7 +311,7 @@ export default function DocumentDetails() {
               </div>
             </div>
           </div>
-        ) : !isRedactionCompleted ? (
+        ) : redactionStatus.status==='redacting' ? (
           <div className="stat-card">
             <h3 className="text-sm font-semibold text-foreground mb-3">Redacted Documents</h3>
             <div className="flex items-center gap-3 p-3 rounded-md bg-warning/8 border border-warning/20">
@@ -291,7 +324,46 @@ export default function DocumentDetails() {
               </div>
             </div>
           </div>
-        ) : null}
+        ) : redactionStatus.status==='approved' ? (
+          <div className="stat-card">
+            <h3 className="text-sm font-semibold text-foreground mb-3">Generated Documents</h3>
+            <div className="flex items-center gap-3 p -3 rounded-md bg-warning/8 border border-warning/20">
+              <Loader2 className="h-4 w-4 animate-spin text-warning" />
+              <div>
+                <p className="text-sm font-medium text-foreground">Generation in Progress</p>
+                <p className="text-xs text-muted-foreground">
+                  The redaction process is completed. Generation process is still running. Documents will appear here once completed.
+                </p>
+              </div>
+            </div>
+          </div>
+        ):
+        redactionStatus.status==='completed' ? (
+          <div className="stat-card">
+            <h3 className="text-sm font-semibold text-foreground mb-3">Generated Documents</h3>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-3 rounded-md bg-success/8 border border-success/20">
+                <CheckCircle2 className="h-4 w-4 text-success" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-foreground">Generation Completed</p>
+                  <p className="text-xs text-muted-foreground">
+                    The generation process is completed. You can download the zip file by clicking the download button below.
+                  </p>
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleDownload}
+                  className="gap-1.5"
+                >
+                  <Download className="h-4 w-4" />
+                  Download Documents
+                </Button>
+              </div>
+            </div>
+          </div>
+        ):
+        null}
       </div>
     </DashboardLayout>
   );

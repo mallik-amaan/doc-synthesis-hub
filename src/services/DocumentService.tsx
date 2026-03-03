@@ -238,7 +238,7 @@ export async function startGenerationFlow(params: StartGenerationParams) {
 
 export type RedactionStatusResponse = {
   request_id: string;
-  status: 'pending' | 'processing' | 'redacting' | 'redacted' | 'completed' | 'failed';
+  status: 'pending' | 'processing' | 'redacting' | 'redacted' | 'completed' | 'failed' | 'approved';
   files?: string[];
   message?: string;
 };
@@ -272,7 +272,7 @@ export async function isRedactionApproved(requestId: string): Promise<boolean>{
   console.log('---printing response---')
   console.log(res)
   const data = await res.json();
-  return data.succeess;
+  return data.success;
   
 }
 
@@ -290,6 +290,25 @@ export async function redactionRejected(requestId: string): Promise<boolean>{
   console.log('---printing response---')
   console.log(res)
   const data = await res.json();
-  return data.succeess;
+  return data.success;
   
+}
+
+export async function getDownloadLink(requestId: string): Promise<string> {
+  const res = await fetch(`${BACKEND_URL}/requests/${requestId}/get-download-link`, {
+    method: 'POST',
+    headers: {},
+  });
+
+  if (!res.ok) {
+    throw new Error('Failed to get download link');
+  }
+
+  const data = await res.json();
+
+  if (!data?.success || !data?.url) {
+    throw new Error('Download link is not available');
+  }
+
+  return data.url;
 }

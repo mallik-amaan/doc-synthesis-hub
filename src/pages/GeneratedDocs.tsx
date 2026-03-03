@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Download, FileArchive, FileText, Calendar, Clock, MoreVertical, Eye, Trash2 } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -19,15 +20,17 @@ export default function GeneratedDocs() {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [generations, setGenerations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!user) return;
     // Check if we're coming from document generation (refresh cache)
     const fromGeneration = location.state?.fromGeneration;
     
-    getDocumentsInfo('23', fromGeneration)
+    getDocumentsInfo(user.id, fromGeneration)
       .then(data => setGenerations(data || []))
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));

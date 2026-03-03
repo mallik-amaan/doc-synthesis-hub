@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Flag, Check, FileText, AlertCircle, Loader2 } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -13,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getDocumentsInfo } from '@/services/DocumentService';
 export default function Analytics() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [selectedSession, setSelectedSession] = useState<string>('');
   const [currentDocIndex, setCurrentDocIndex] = useState(0);
   const [flaggedDocs, setFlaggedDocs] = useState<Set<number>>(new Set());
@@ -23,8 +25,9 @@ export default function Analytics() {
 
 
   useEffect(() => {
+    if (!user) return;
     setLoadingSessions(true)
-    getDocumentsInfo('23')
+    getDocumentsInfo(user.id)
       .then(setSessions)
       .catch(err => setErrorSessions(err.message))
       .finally(() => setLoadingSessions(false));
