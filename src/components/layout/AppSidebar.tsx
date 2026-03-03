@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
+  { icon: FileText, label: 'New Request', path: '/request-generation' },
   { icon: FileText, label: 'Generated Docs', path: '/generated-docs' },
   { icon: Settings, label: 'Settings', path: '/settings' },
   { icon: BarChart3, label: 'Analytics', path: '/analytics' },

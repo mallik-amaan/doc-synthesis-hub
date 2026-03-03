@@ -3,13 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { FileText, FileCheck, AlertTriangle, TrendingUp, Plus, Clock, CheckCircle2, XCircle, Eye } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { StatsCard } from '@/components/dashboard/StatsCard';
-import { DocumentRequestModal } from '@/components/dashboard/DocumentRequestModal';
 import { Button } from '@/components/ui/button';
 import { getDashboardStats } from '@/services/DocumentService';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [stats, setStats] = useState([])
   useEffect(() => {
     const userId = '1234';
@@ -30,7 +28,7 @@ export default function Dashboard() {
             </p>
           </div>
           <Button 
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => navigate('/request-generation')}
             className="gap-2"
           >
             <Plus className="h-4 w-4" />
@@ -155,7 +153,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <DocumentRequestModal open={isModalOpen} onOpenChange={setIsModalOpen} />
+      
     </DashboardLayout>
   );
 }
