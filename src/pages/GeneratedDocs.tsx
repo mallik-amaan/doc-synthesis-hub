@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getDocumentsInfo } from '@/services/DocumentService';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const BACKEND_URL = 'http://localhost:3000';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
 
 export default function GeneratedDocs() {
   const navigate = useNavigate();

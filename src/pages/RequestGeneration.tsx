@@ -21,12 +21,11 @@ import { startGenerationFlow, UploadProgressState } from '@/services/DocumentSer
 
 const languages = ['English', 'Spanish', 'French', 'German', 'Chinese', 'Japanese', 'Arabic'];
 const documentTypes = ['Research Paper', 'Technical Report', 'Legal Document', 'Medical Record', 'Financial Statement', 'General'];
-const visualElementTypes = ['stamp', 'logo', 'figure', 'barcode', 'photo'] as const;
+const visualElementTypes = ['stamp', 'logo', 'figure', 'photo'] as const;
 
 type VisualAsset = {
   file: File;
   elementType: typeof visualElementTypes[number];
-  barcodeNumber?: string;
 };
 
 export default function RequestGeneration() {
@@ -41,7 +40,8 @@ export default function RequestGeneration() {
   const [formData, setFormData] = useState({
     documentName: '',
     language: '',
-    groundTruth: '',
+    gt_type: '',
+    gt_format: '',
     numSolutions: 1,
     documentType: '',
     redaction: false,
@@ -50,7 +50,7 @@ export default function RequestGeneration() {
 
   // Advanced fields
   const [advancedData, setAdvancedData] = useState({
-    seed: 0,
+    seed: null,
     enable_ocr: true,
     ocr_language: 'en',
     enable_bbox_normalization: true,
@@ -60,6 +60,10 @@ export default function RequestGeneration() {
     enable_dataset_export: true,
     dataset_export_format: 'msgpack',
     output_detail: 'dataset',
+    barcodeEnabled: false,
+    barcodeNumber: '',  
+    enable_handwriting: false,
+    handwriting_ratio: 0.2,
   });
 
   const [visualAssets, setVisualAssets] = useState<VisualAsset[]>([]);
@@ -98,17 +102,13 @@ export default function RequestGeneration() {
   };
 
   const updateVisualAssetType = (index: number, type: typeof visualElementTypes[number]) => {
-    setVisualAssets(prev => prev.map((a, i) => i === index ? { ...a, elementType: type, barcodeNumber: type === 'barcode' ? a.barcodeNumber : undefined } : a));
-  };
-
-  const updateBarcodeNumber = (index: number, value: string) => {
-    setVisualAssets(prev => prev.map((a, i) => i === index ? { ...a, barcodeNumber: value } : a));
+    setVisualAssets(prev => prev.map((a, i) => i === index ? { ...a, elementType: type } : a));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.documentName || !formData.language || !formData.documentType || !formData.groundTruth) {
+    if (!formData.documentName || !formData.language || !formData.documentType || !formData.gt_type || !formData.gt_format) {
       toast({ variant: 'destructive', title: 'Missing fields', description: 'Please fill in all required fields.' });
       return;
     }
@@ -120,9 +120,8 @@ export default function RequestGeneration() {
 
     // Validate barcode numbers in advanced mode
     if (activeTab === 'advanced') {
-      const missingBarcode = visualAssets.find(a => a.elementType === 'barcode' && !a.barcodeNumber);
-      if (missingBarcode) {
-        toast({ variant: 'destructive', title: 'Missing barcode number', description: 'Please enter a barcode number for all barcode visual assets.' });
+      if (advancedData.barcodeEnabled && !advancedData.barcodeNumber) {
+        toast({ variant: 'destructive', title: 'Missing barcode number', description: 'Please enter a barcode number.' });
         return;
       }
     }
@@ -135,24 +134,24 @@ export default function RequestGeneration() {
 
       const baseMetadata = {
         documentName: formData.documentName,
-        groundTruth: formData.groundTruth,
+        gt_type: formData.gt_type,
+        gt_format: formData.gt_format,
         documentType: formData.documentType,
         language: formData.language,
         redaction: formData.redaction,
         numSolutions: formData.numSolutions,
       };
 
-      const metadata = activeTab === 'advanced'
-        ? {
-            ...baseMetadata,
-            ...advancedData,
-            visual_assets_metadata: visualAssets.map(a => ({
-              fileName: a.file.name,
-              elementType: a.elementType,
-              ...(a.elementType === 'barcode' ? { barcodeNumber: a.barcodeNumber } : {}),
-            })),
-          }
-        : baseMetadata;
+      const metadata = {
+        ...baseMetadata,
+        ...advancedData,
+        ...(activeTab === 'advanced' && {
+          visual_assets_metadata: visualAssets.map(a => ({
+            fileName: a.file.name,
+            elementType: a.elementType,
+          })),
+        }),
+      };
 
       await startGenerationFlow({
         userId: user.id,
@@ -294,15 +293,27 @@ export default function RequestGeneration() {
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="groundTruth" className="text-sm">Ground Truth Specification *</Label>
-            <Textarea
-              id="groundTruth"
-              placeholder="Enter ground truth specification..."
-              value={formData.groundTruth}
-              onChange={(e) => setFormData(prev => ({ ...prev, groundTruth: e.target.value }))}
-              className="min-h-[100px] font-mono text-xs"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="gt_type" className="text-sm">Ground Truth Type *</Label>
+              <Textarea
+                id="gt_type"
+                placeholder="Enter ground truth type"
+                value={formData.gt_type}
+                onChange={(e) => setFormData(prev => ({ ...prev, gt_type: e.target.value }))}
+                className="min-h-[100px]"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="gt_format" className="text-sm">Ground Truth Format *</Label>
+              <Textarea
+                id="gt_format"
+                placeholder="Enter ground truth format"
+                value={formData.gt_format}
+                onChange={(e) => setFormData(prev => ({ ...prev, gt_format: e.target.value }))}
+                className="min-h-[100px]"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -416,9 +427,61 @@ export default function RequestGeneration() {
                     </div>
                   ))}
                 </div>
-              </div>
 
-              {/* Visual Assets (advanced only) */}
+                {/* Barcode Field */}
+                <div className="border-t border-border pt-6 mt-6">
+                  <div className="flex items-center justify-between p-3 rounded-md border border-border mb-4">
+                    <Label className="text-sm">Add Barcode</Label>
+                    <Switch
+                      checked={advancedData.barcodeEnabled}
+                      onCheckedChange={(checked) => setAdvancedData(prev => ({ ...prev, barcodeEnabled: checked }))}
+                    />
+                  </div>
+
+                  {advancedData.barcodeEnabled && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="barcodeNumber" className="text-sm">Barcode Number</Label>
+                      <div className="flex items-center gap-2">
+                        <Barcode className="h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="barcodeNumber"
+                          placeholder="Enter barcode number"
+                          value={advancedData.barcodeNumber}
+                          onChange={(e) => setAdvancedData(prev => ({ ...prev, barcodeNumber: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Handwriting Field */}
+                <div className="border-t border-border pt-6 mt-6">
+                  <div className="flex items-center justify-between p-3 rounded-md border border-border mb-4">
+                    <Label className="text-sm">Enable Handwriting</Label>
+                    <Switch
+                      checked={advancedData.enable_handwriting}
+                      onCheckedChange={(checked) => setAdvancedData(prev => ({ ...prev, enable_handwriting: checked }))}
+                    />
+                  </div>
+
+                  {advancedData.enable_handwriting && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="handwritingRatio" className="text-sm">Handwriting Ratio</Label>
+                      <Input
+                        id="handwritingRatio"
+                        type="number"
+                        min="0"
+                        max="1"
+                        step="0.1"
+                        placeholder="0.3"
+                        value={advancedData.handwriting_ratio}
+                        onChange={(e) => setAdvancedData(prev => ({ ...prev, handwriting_ratio: parseFloat(e.target.value) || 0.3 }))}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+{/** 
               <div className="border-t border-border pt-6">
                 <h3 className="text-sm font-semibold text-foreground mb-4">Visual Assets</h3>
                 <div className="border border-dashed border-border rounded-lg p-5 text-center hover:border-primary/40 transition-colors">
@@ -443,7 +506,6 @@ export default function RequestGeneration() {
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
-                        {/* Element type selector */}
                         <div className="flex flex-wrap gap-1.5">
                           {visualElementTypes.map(type => (
                             <button
@@ -460,23 +522,13 @@ export default function RequestGeneration() {
                             </button>
                           ))}
                         </div>
-                        {/* Barcode number input */}
-                        {asset.elementType === 'barcode' && (
-                          <div className="flex items-center gap-2">
-                            <Barcode className="h-4 w-4 text-muted-foreground" />
-                            <Input
-                              placeholder="Enter barcode number"
-                              value={asset.barcodeNumber || ''}
-                              onChange={(e) => updateBarcodeNumber(index, e.target.value)}
-                              className="h-8 text-xs"
-                            />
-                          </div>
-                        )}
                       </div>
                     ))}
                   </div>
                 )}
+                
               </div>
+*/}
             </>
           )}
 

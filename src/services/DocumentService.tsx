@@ -1,6 +1,7 @@
-const BACKEND_URL = 'http://localhost:3000';
-
 import { documentCache } from './DocumentCache';
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+const REDACTION_API_URL = import.meta.env.VITE_REDACTION_API_URL || 'https://text-to-document-generation-pdf-redaction-api.hf.space';
 
 // Base function that actually fetches from API
 async function fetchDocumentsInfoFromAPI(userId: string) {
@@ -244,7 +245,7 @@ export type RedactionStatusResponse = {
 };
 
 export async function getRedactionStatus(requestId: string): Promise<RedactionStatusResponse> {
-  const res = await fetch(`https://text-to-document-generation-pdf-redaction-api.hf.space/redaction_status/${requestId}`, {
+  const res = await fetch(`${REDACTION_API_URL}/redaction_status/${requestId}`, {
     method: 'GET',
      headers: {},
   });
