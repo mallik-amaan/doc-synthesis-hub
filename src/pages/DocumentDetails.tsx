@@ -7,13 +7,31 @@ import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { PDFViewer } from '@/components/analytics/PDFViewer';
-import { getDownloadLink, getRedactionStatus, isRedactionApproved, type RedactionStatusResponse } from '@/services/DocumentService';
+import { getDownloadLink, getRedactionStatus, isRedactionApproved, pollRequestStatus, type RedactionStatusResponse } from '@/services/DocumentService';
 
 interface RedactedDocument {
   id: string;
   name: string;
   pdfUrl: string;
 }
+
+// Status progression order
+const STATUS_STEPS = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'redacting', label: 'Redacting' },
+  { value: 'redacted', label: 'Redacted' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'generating', label: 'Generating' },
+  { value: 'downloading', label: 'Downloading' },
+  { value: 'processing', label: 'Processing' },
+  { value: 'ocr', label: 'OCR' },
+  { value: 'handwriting', label: 'Handwriting' },
+  { value: 'validation', label: 'Validation' },
+  { value: 'zipping', label: 'Zipping' },
+  { value: 'uploading', label: 'Uploading' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'failed', label: 'Failed' },
+];
 
 export default function DocumentDetails() {
   const { id } = useParams<{ id: string }>();
@@ -35,11 +53,9 @@ export default function DocumentDetails() {
       }
 
       try {
-        console.log(id)
+        // Initial fetch
         const status = await getRedactionStatus(id);
         setRedactionStatus(status);
-        console.log("redaction status is "+ status.status)
-        console.log("length is" + redactedDocs.length)
 
         if (status.status === 'redacted' && status.files && Array.isArray(status.files)) {
           const docs: RedactedDocument[] = status.files.map((fileUrl, index) => {
@@ -51,10 +67,38 @@ export default function DocumentDetails() {
               pdfUrl: fileUrl,
             };
           });
-          console.log("printing docs")
-          console.log(docs[0].pdfUrl)
           setRedactedDocs(docs);
         }
+
+        // Start polling for status updates
+        const stopPolling = await pollRequestStatus(
+          id,
+          (updatedStatus) => {
+            setRedactionStatus(updatedStatus);
+
+            // Update redacted docs if status changed to redacted
+            if (updatedStatus.status === 'redacted' && updatedStatus.files && Array.isArray(updatedStatus.files)) {
+              const docs: RedactedDocument[] = updatedStatus.files.map((fileUrl, index) => {
+                const urlParts = fileUrl.split('/');
+                const filename = urlParts[urlParts.length - 1] || `Document_${index + 1}.pdf`;
+                return {
+                  id: index.toString(),
+                  name: filename,
+                  pdfUrl: fileUrl,
+                };
+              });
+              setRedactedDocs(docs);
+            }
+          },
+          3000 // Poll every 3 seconds
+        );
+
+        setIsLoading(false);
+
+        // Cleanup: stop polling when component unmounts
+        return () => {
+          stopPolling();
+        };
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Failed to load redaction status';
         setError(errorMsg);
@@ -63,7 +107,6 @@ export default function DocumentDetails() {
           title: 'Error',
           description: errorMsg,
         });
-      } finally {
         setIsLoading(false);
       }
     };
@@ -200,34 +243,45 @@ export default function DocumentDetails() {
         <div className="stat-card">
           <h3 className="text-sm font-semibold text-foreground mb-3">Request Status</h3>
           <div className="flex items-center gap-3">
-            {redactionStatus?.status === 'redacted' || redactionStatus?.status === 'approved' ? (
+            {(['completed', 'approved', 'redacted'] as const).includes(redactionStatus?.status as any) ? (
               <div className="h-7 w-7 rounded-md bg-success/10 flex items-center justify-center">
                 <CheckCircle2 className="h-4 w-4 text-success" />
               </div>
-            ) : redactionStatus?.status === 'processing' || redactionStatus?.status === 'pending' ? (
-              <div className="h-7 w-7 rounded-md border border-primary flex items-center justify-center">
-                <div className="h-2.5 w-2.5 rounded-full bg-primary animate-pulse" />
-              </div>
-            ) : (
+            ) : redactionStatus?.status === 'failed' ? (
               <div className="h-7 w-7 rounded-md bg-destructive/10 flex items-center justify-center">
                 <XCircle className="h-4 w-4 text-destructive" />
+              </div>
+            ) : (
+              <div className="h-7 w-7 rounded-md border border-primary flex items-center justify-center">
+                <div className="h-2.5 w-2.5 rounded-full bg-primary animate-pulse" />
               </div>
             )}
             <div className="flex-1">
               <p className="text-sm font-medium capitalize">{redactionStatus?.status}</p>
               <p className="text-xs text-muted-foreground">
-                {redactionStatus?.message || (redactionStatus?.status === 'redacted'
-                  ? 'All documents have been redacted successfully'
-                  : redactionStatus?.status === 'processing'
-                  ? 'Redaction process is in progress...'
-                  : redactionStatus?.status === 'pending'
-                  ? 'Redaction process will start soon...'
-                  : 'Redaction process failed')}
+                {redactionStatus?.message || (
+                  {
+                    'pending': 'Request created, waiting to start...',
+                    'redacting': 'Redaction process in progress...',
+                    'redacted': 'Documents have been redacted successfully',
+                    'approved': 'Redaction approved, continuing to generation...',
+                    'generating': 'Generating document structure...',
+                    'downloading': 'Downloading seed images...',
+                    'processing': 'Processing files...',
+                    'ocr': 'Running OCR on documents...',
+                    'handwriting': 'Generating handwritten text...',
+                    'validation': 'Validating ground truth...',
+                    'zipping': 'Creating ZIP archive...',
+                    'uploading': 'Uploading to storage...',
+                    'completed': 'Document generation completed successfully',
+                    'failed': 'Process failed, please check the details'
+                  }[redactionStatus?.status as string] || 'Processing...'
+                )}
               </p>
             </div>
           </div>
 
-          {redactionStatus?.status === 'processing' && (
+          {(['pending', 'redacting', 'generating', 'downloading', 'processing', 'ocr', 'handwriting', 'validation', 'zipping', 'uploading'] as const).includes(redactionStatus?.status as any) && (
             <div className="space-y-1.5 mt-4">
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Processing...</span>
@@ -237,7 +291,127 @@ export default function DocumentDetails() {
           )}
         </div>
 
-        {/* Redacted Documents Section */}
+        {/* Progress Steps Section */}
+        {redactionStatus && redactionStatus.status !== 'failed' && (
+          <div className="stat-card">
+            <h3 className="text-sm font-semibold text-foreground mb-4">Process Steps</h3>
+            <div className="space-y-3">
+              {/* Steps Timeline */}
+              <div className="flex gap-1.5">
+                {STATUS_STEPS.filter(step => step.value !== 'failed').map((step, index) => {
+                  const currentIndex = STATUS_STEPS.filter(s => s.value !== 'failed').findIndex(s => s.value === redactionStatus?.status);
+                  const isCompleted = index < currentIndex || (index === currentIndex && redactionStatus?.status === 'completed');
+                  const isCurrent = index === currentIndex && redactionStatus?.status !== 'completed';
+                  const isPending = index > currentIndex;
+
+                  return (
+                    <div key={step.value} className="flex flex-col items-center flex-1">
+                      <button
+                        className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-medium transition-all ${
+                          isCompleted
+                            ? 'bg-success text-success-foreground'
+                            : isCurrent
+                            ? 'bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2 ring-offset-background'
+                            : 'bg-muted text-muted-foreground'
+                        }`}
+                      >
+                        {isCompleted ? (
+                          <Check className="h-4 w-4" />
+                        ) : (
+                          index + 1
+                        )}
+                      </button>
+                      <p className="text-[10px] text-muted-foreground mt-1.5 text-center leading-tight truncate w-full">
+                        {step.label}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Progress Bar */}
+              <div className="mt-4">
+                <div className="flex gap-0.5 h-2 bg-muted rounded-full overflow-hidden">
+                  {STATUS_STEPS.filter(step => step.value !== 'failed').map((step, index) => {
+                    const currentIndex = STATUS_STEPS.filter(s => s.value !== 'failed').findIndex(s => s.value === redactionStatus?.status);
+                    const isCompleted = index <= currentIndex;
+                    const width = `${100 / STATUS_STEPS.filter(s => s.value !== 'failed').length}%`;
+
+                    return (
+                      <div
+                        key={step.value}
+                        className={`flex-1 transition-colors ${
+                          isCompleted ? 'bg-success' : 'bg-muted'
+                        }`}
+                        style={{ width }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {redactionStatus?.status === 'failed' && (
+          <div className="stat-card">
+            <h3 className="text-sm font-semibold text-foreground mb-4">Process Steps</h3>
+            <div className="space-y-3">
+              {/* Steps Timeline */}
+              <div className="flex gap-1.5">
+                {STATUS_STEPS.map((step, index) => {
+                  const currentIndex = STATUS_STEPS.findIndex(s => s.value === redactionStatus?.status);
+                  const isCompleted = index < currentIndex;
+                  const isCurrent = index === currentIndex;
+                  const isPending = index > currentIndex;
+
+                  return (
+                    <div key={step.value} className="flex flex-col items-center flex-1">
+                      <button
+                        className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-medium transition-all ${
+                          isCurrent
+                            ? 'bg-destructive text-destructive-foreground ring-2 ring-destructive ring-offset-2 ring-offset-background'
+                            : isCompleted
+                            ? 'bg-muted text-muted-foreground'
+                            : 'bg-muted text-muted-foreground'
+                        }`}
+                      >
+                        {isCurrent ? (
+                          <XCircle className="h-4 w-4" />
+                        ) : (
+                          index + 1
+                        )}
+                      </button>
+                      <p className="text-[10px] text-muted-foreground mt-1.5 text-center leading-tight truncate w-full">
+                        {step.label}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Progress Bar */}
+              <div className="mt-4">
+                <div className="flex gap-0.5 h-2 bg-muted rounded-full overflow-hidden">
+                  {STATUS_STEPS.map((step, index) => {
+                    const currentIndex = STATUS_STEPS.findIndex(s => s.value === redactionStatus?.status);
+                    const isFailed = index === currentIndex && redactionStatus?.status === 'failed';
+                    const width = `${100 / STATUS_STEPS.length}%`;
+
+                    return (
+                      <div
+                        key={step.value}
+                        className={`flex-1 transition-colors ${
+                          isFailed ? 'bg-destructive' : 'bg-muted'
+                        }`}
+                        style={{ width }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         {isRedactionCompleted && redactedDocs.length > 0 ? 
         (
           <div className="stat-card">

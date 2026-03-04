@@ -313,3 +313,43 @@ export async function getDownloadLink(requestId: string): Promise<string> {
 
   return data.url;
 }
+
+// Polling function for real-time status updates
+export async function pollRequestStatus(
+  requestId: string,
+  onStatusChange: (status: RedactionStatusResponse) => void,
+  interval: number = 3000, // Poll every 3 seconds
+  maxAttempts: number = 0 // 0 = infinite polling
+): Promise<() => void> {
+  let attempts = 0;
+  let lastStatus: string | null = null;
+
+  const pollInterval = setInterval(async () => {
+    if (maxAttempts > 0 && attempts >= maxAttempts) {
+      clearInterval(pollInterval);
+      return;
+    }
+
+    try {
+      const status = await getRedactionStatus(requestId);
+      
+      // Only call callback if status has changed
+      if (status.status !== lastStatus) {
+        lastStatus = status.status;
+        onStatusChange(status);
+      }
+
+      // Stop polling if terminal state is reached
+      if (status.status === 'completed' || status.status === 'failed') {
+        clearInterval(pollInterval);
+      }
+    } catch (error) {
+      console.error('Error polling status:', error);
+    }
+
+    attempts++;
+  }, interval);
+
+  // Return a function to stop polling manually
+  return () => clearInterval(pollInterval);
+}
