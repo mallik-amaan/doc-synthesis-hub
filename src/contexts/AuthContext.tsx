@@ -12,10 +12,13 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isGoogleConnected: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
+  getAPIKey: (userID: string) => Promise<string>;
   connectGoogleDrive: () => Promise<void>;
+  checkGoogleStatus: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
@@ -24,6 +27,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isGoogleConnected, setIsGoogleConnected] = useState(false);
 
   useEffect(() => {
     // Check for existing session and validate token
@@ -37,12 +41,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           if (isValid) {
             setUser(parsedUser);
+            checkGoogleStatusForUser(parsedUser);
           } else {
             // Try to refresh the token
             const refreshed = await refreshAccessToken(parsedUser.refresh_token, parsedUser.id);
             if (refreshed) {
               setUser(refreshed);
               localStorage.setItem('fyp_user', JSON.stringify(refreshed));
+              checkGoogleStatusForUser(refreshed);
             } else {
               // Both token and refresh failed, clear session
               localStorage.removeItem('fyp_user');
@@ -63,10 +69,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Helper to resolve backend URL from env like before
   const getBackendUrl = () => {
-    const fromProcess =
-      typeof process !== 'undefined' && process.env
-        ? process.env.REACT_APP_BACKEND_URL || process.env.BACKEND_URL
+    const processEnv =
+      typeof globalThis !== 'undefined' && 'process' in globalThis
+        ? (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env
         : undefined;
+
+    const fromProcess = processEnv
+      ? processEnv.REACT_APP_BACKEND_URL || processEnv.BACKEND_URL
+      : undefined;
 
     const fromImportMeta =
       typeof import.meta !== 'undefined' ? (import.meta as any).env?.VITE_BACKEND_URL : undefined;
@@ -132,15 +142,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
     const connectGoogleDrive = async () => {
+      if (!user) throw new Error('User not authenticated');
       const BACKEND_URL = getBackendUrl();
       const redirectAfterAuth = window.location.origin + "/settings";
 
-      const res = await fetch(`${BACKEND_URL}/oauth/google?redirect=${encodeURIComponent(redirectAfterAuth)}`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      });
+      const res = await fetch(
+        `${BACKEND_URL}/oauth/google?redirect=${encodeURIComponent(redirectAfterAuth)}&userId=${encodeURIComponent(user.id)}`,
+        { method: 'GET', headers: { 'Content-Type': 'application/json' } }
+      );
 
-      // If backend returns JSON with a redirect URL, use it
       const contentType = res.headers.get('content-type') || '';
       if (contentType.includes('application/json')) {
         const data = await res.json().catch(() => null);
@@ -152,18 +162,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       throw new Error('Redirect URL not available from backend response');
     };
-    
-    const checkGoogleStatus = async () => {
-      const BACKEND_URL = getBackendUrl();
 
-      const res = await fetch(`${BACKEND_URL}/oauth/google/status`, {
-        credentials: "include",
-      });
-
-      const data = await res.json();
-      if (data.connected) {
-        console.log("Google Drive is connected");
+    const checkGoogleStatusForUser = async (targetUser: User) => {
+      if (!targetUser?.access_token) return;
+      try {
+        const BACKEND_URL = getBackendUrl();
+        const res = await fetch(`${BACKEND_URL}/oauth/google/status`, {
+          headers: { 'Authorization': `Bearer ${targetUser.access_token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setIsGoogleConnected(data.connected === true);
+        }
+      } catch (e) {
+        // status check failure is non-fatal
       }
+    };
+
+    const checkGoogleStatus = async () => {
+      if (user) await checkGoogleStatusForUser(user);
     };
 
   const login = async (email: string, password: string) => {
@@ -252,6 +269,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const getAPIKey = async (userID: string): Promise<string> => {
+    if (!userID) {
+      throw new Error('userID is null');
+    }
+
+    if (!user?.access_token) {
+      throw new Error('User not authenticated');
+    }
+
+    const BACKEND_URL = getBackendUrl();
+    const res = await fetch(`${BACKEND_URL}/auth/${userID}/get-api-key?id=${encodeURIComponent(userID)}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${user.access_token}`
+      },
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      const err: any = new Error(text || 'Failed to get API key');
+      err.status = res.status;
+      throw err;
+    }
+
+    const data = await res.json().catch(() => ({}));
+    const result = data?.result;
+
+    if (result && data?.apiKey) {
+      return String(data.apiKey);
+    }
+
+    throw new Error(data?.message || 'API key not available');
+  };
+
   const changePassword = async (currentPassword: string, newPassword: string) => {
     if (!currentPassword || !newPassword) {
       throw new Error('Current password and new password are required');
@@ -300,7 +352,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, signup, logout, connectGoogleDrive, changePassword }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, isGoogleConnected, login, signup, logout, getAPIKey, connectGoogleDrive, checkGoogleStatus, changePassword }}>
       {children}
     </AuthContext.Provider>
   );

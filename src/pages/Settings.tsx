@@ -1,23 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { User, Mail, Lock, HardDrive, Link2, Check, Key, Eye, EyeOff, Copy } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
+
 export default function Settings() {
-  const { user, connectGoogleDrive, changePassword } = useAuth();
+  const { user, connectGoogleDrive, checkGoogleStatus, isGoogleConnected, changePassword, getAPIKey } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [driveConnected, setDriveConnected] = useState(false);
   const [driveEnabled, setDriveEnabled] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
-
-  const apiKey = 'sk-t2d-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
+  const [apiKey, setApiKey] = useState('');
   
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -27,7 +25,48 @@ export default function Settings() {
     confirmPassword: '',
   });
 
+  useEffect(() => {
+    checkGoogleStatus();
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('oauth') === 'success') {
+      toast({ title: 'Google Drive connected', description: 'Your Drive has been successfully linked.' });
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  useEffect(() => {
+    const loadApiKey = async () => {
+      if (!user?.id) {
+        setApiKey('');
+        return;
+      }
+
+      try {
+        const key = await getAPIKey(user.id);
+        setApiKey(key);
+      } catch (error: any) {
+        setApiKey('');
+        toast({
+          variant: 'destructive',
+          title: 'Failed to load API key',
+          description: error?.message || 'Unable to fetch your API key.',
+        });
+      }
+    };
+
+    loadApiKey();
+  }, [user?.id, getAPIKey, toast]);
+
+  useEffect(() => {
+    setFormData((prev) => ({
+      ...prev,
+      name: user?.name || '',
+      email: user?.email || '',
+    }));
+  }, [user?.name, user?.email]);
+
   const handleCopyApiKey = () => {
+    if (!apiKey) return;
     navigator.clipboard.writeText(apiKey);
     toast({
       title: 'API Key copied',
@@ -93,24 +132,20 @@ export default function Settings() {
 
   const handleConnectDrive = async () => {
     setIsLoading(true);
-    await connectGoogleDrive();
-    setDriveConnected(true);
-    toast({
-      title: 'Google Drive connected',
-      description: 'You can now upload seed documents from your Drive.',
-    });
-    setIsLoading(false);
+    try {
+      await connectGoogleDrive();
+      // browser will redirect to Google; code below only runs on error
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Connection failed', description: err?.message || 'Could not start Google OAuth.' });
+      setIsLoading(false);
+    }
   };
 
   const handleDisconnectDrive = async () => {
     setIsLoading(true);
     await new Promise(resolve => setTimeout(resolve, 500));
-    setDriveConnected(false);
     setDriveEnabled(false);
-    toast({
-      title: 'Google Drive disconnected',
-      description: 'Your Drive integration has been removed.',
-    });
+    toast({ title: 'Google Drive disconnected', description: 'Your Drive integration has been removed.' });
     setIsLoading(false);
   };
 
@@ -203,7 +238,7 @@ export default function Settings() {
                     {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
-                <Button type="button" variant="outline" size="icon" onClick={handleCopyApiKey}>
+                <Button type="button" variant="outline" size="icon" onClick={handleCopyApiKey} disabled={!apiKey}>
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
@@ -281,12 +316,12 @@ export default function Settings() {
           <div className="space-y-4">
             <div className="flex items-center justify-between p-3 rounded-md border border-border">
               <div className="flex items-center gap-2.5">
-                <div className={`h-2 w-2 rounded-full ${driveConnected ? 'bg-success' : 'bg-muted-foreground/40'}`} />
+                <div className={`h-2 w-2 rounded-full ${isGoogleConnected ? 'bg-success' : 'bg-muted-foreground/40'}`} />
                 <span className="text-sm font-medium text-foreground">
-                  {driveConnected ? 'Connected' : 'Not Connected'}
+                  {isGoogleConnected ? 'Connected' : 'Not Connected'}
                 </span>
               </div>
-              {driveConnected ? (
+              {isGoogleConnected ? (
                 <Button variant="outline" size="sm" onClick={handleDisconnectDrive} disabled={isLoading}>
                   Disconnect
                 </Button>
@@ -298,7 +333,7 @@ export default function Settings() {
               )}
             </div>
 
-            {driveConnected && (
+            {isGoogleConnected && (
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-foreground">Enable Drive Uploads</p>
@@ -313,7 +348,7 @@ export default function Settings() {
               </div>
             )}
 
-            {driveConnected && driveEnabled && (
+            {isGoogleConnected && driveEnabled && (
               <div className="flex items-center gap-2 p-2.5 rounded-md bg-success/8 text-success">
                 <Check className="h-4 w-4" />
                 <span className="text-xs font-medium">

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { FileStack, Mail, Lock, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,8 @@ export default function Login() {
   const { login, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get('redirect') || '/dashboard';
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
@@ -31,7 +33,7 @@ export default function Login() {
         description: 'You have successfully logged in.',
       });
 
-      navigate('/dashboard', { replace: true });
+      navigate(redirectTo, { replace: true });
     } catch (error: any) {
       if (error?.status === 401) {
         toast({
