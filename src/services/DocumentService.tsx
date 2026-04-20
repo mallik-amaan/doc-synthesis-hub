@@ -295,6 +295,57 @@ export async function redactionRejected(requestId: string): Promise<boolean>{
   
 }
 
+export async function downloadGeneratedDocs(requestId: string): Promise<string> {
+  const res = await fetch(`${BACKEND_URL}/docs/download-generated-docs`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ docId: requestId }),
+  });
+
+  if (!res.ok) throw new Error('Failed to get download link');
+
+  const data = await res.json();
+  if (!data.success || !data.url) throw new Error('No download link available yet');
+
+  return data.url;
+}
+
+export async function downloadGroundTruthFiles(requestId: string): Promise<string> {
+  const res = await fetch(`${BACKEND_URL}/docs/download-gt-files`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ docId: requestId }),
+  });
+
+  if (!res.ok) throw new Error('Failed to get ground truth download link');
+
+  const data = await res.json();
+  if (!data.success || !data.url) throw new Error('No ground truth files available yet');
+
+  return data.url;
+}
+
+export async function deleteDocument(requestId: string): Promise<void> {
+  const res = await fetch(`${BACKEND_URL}/docs/delete-doc/${requestId}`, {
+    method: 'DELETE',
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Failed to delete document');
+  }
+}
+
+export async function submitDocumentReview(sessionId: string, flaggedIndices: number[]): Promise<void> {
+  const res = await fetch(`${BACKEND_URL}/analytics/submit-review`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId, flagged: flaggedIndices }),
+  });
+
+  if (!res.ok) throw new Error('Failed to submit review');
+}
+
 export async function getDownloadLink(requestId: string): Promise<string> {
   const res = await fetch(`${BACKEND_URL}/requests/${requestId}/get-download-link`, {
     method: 'POST',

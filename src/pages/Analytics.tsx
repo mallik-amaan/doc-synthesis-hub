@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { getDocumentsInfo } from '@/services/DocumentService';
+import { getDocumentsInfo, submitDocumentReview, downloadGeneratedDocs } from '@/services/DocumentService';
 export default function Analytics() {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -22,17 +22,25 @@ export default function Analytics() {
   const [sessions, setSessions] = useState<any[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [errorSessions, setErrorSessions] = useState<string | null>(null);
+  const [docDownloadUrl, setDocDownloadUrl] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
 
   useEffect(() => {
     if (!user) return;
-    setLoadingSessions(true)
+    setLoadingSessions(true);
     getDocumentsInfo(user.id)
       .then(setSessions)
       .catch(err => setErrorSessions(err.message))
       .finally(() => setLoadingSessions(false));
-
   }, []);
+
+  useEffect(() => {
+    if (!selectedSession) { setDocDownloadUrl(null); return; }
+    downloadGeneratedDocs(selectedSession)
+      .then(url => setDocDownloadUrl(url))
+      .catch(() => setDocDownloadUrl(null));
+  }, [selectedSession]);
 
   function getDrivePreviewUrl(driveUrl) {
     const regex = /\/d\/([a-zA-Z0-9_-]+)|id=([a-zA-Z0-9_-]+)/;
@@ -47,8 +55,7 @@ export default function Analytics() {
   }
 
   const session = sessions.find(s => s.id === selectedSession);
-  const totalDocs = session?.metadata.numSolutions || 0;
-  const pdfToRender = "https://drive.google.com/file/d/1EzUn4OumAOyPtyfbEPNATVACq0su9gxd/preview"
+  const totalDocs = session?.metadata?.numSolutions || 0;
 
   const handlePrevious = () => {
     setCurrentDocIndex(prev => Math.max(0, prev - 1));
@@ -83,15 +90,23 @@ export default function Analytics() {
     });
   };
 
-  const handleSubmitReview = () => {
-    toast({
-      title: 'Review submitted',
-      description: `${totalDocs - flaggedDocs.size} valid, ${flaggedDocs.size} flagged documents.`,
-    });
-    setIsReviewComplete(false);
-    setSelectedSession('');
-    setCurrentDocIndex(0);
-    setFlaggedDocs(new Set());
+  const handleSubmitReview = async () => {
+    setIsSubmitting(true);
+    try {
+      await submitDocumentReview(selectedSession, Array.from(flaggedDocs));
+      toast({
+        title: 'Review submitted',
+        description: `${totalDocs - flaggedDocs.size} valid, ${flaggedDocs.size} flagged documents.`,
+      });
+      setIsReviewComplete(false);
+      setSelectedSession('');
+      setCurrentDocIndex(0);
+      setFlaggedDocs(new Set());
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Submission failed', description: err?.message || 'Could not submit review.' });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const resetReview = () => {
@@ -197,26 +212,46 @@ export default function Analytics() {
               <div className="review-panel">
                 <div className="flex items-center gap-2 mb-3">
                   <FileText className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-semibold text-foreground">Generated Document (PDF)</h3>
+                  <h3 className="text-sm font-semibold text-foreground">Generated Document</h3>
                 </div>
-                {pdfToRender ? (
-                  <iframe height={500} width="100%" src={pdfToRender} className="rounded-md border border-border" />
+                {docDownloadUrl ? (
+                  <div className="flex flex-col items-center justify-center h-[400px] gap-4 rounded-md border border-border bg-secondary">
+                    <FileText className="h-12 w-12 text-muted-foreground/40" />
+                    <p className="text-sm text-muted-foreground">Document #{currentDocIndex + 1} ready</p>
+                    <a
+                      href={docDownloadUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                    >
+                      Download ZIP
+                    </a>
+                  </div>
                 ) : (
-                  <div className="text-sm text-muted-foreground">No PDF available to preview.</div>
+                  <div className="flex flex-col items-center justify-center h-[400px] rounded-md border border-border bg-secondary">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/40 mb-2" />
+                    <p className="text-xs text-muted-foreground">Fetching document link...</p>
+                  </div>
                 )}
               </div>
 
               <div className="review-panel">
                 <div className="flex items-center gap-2 mb-3">
                   <Check className="h-4 w-4 text-success" />
-                  <h3 className="text-sm font-semibold text-foreground">Ground Truth</h3>
+                  <h3 className="text-sm font-semibold text-foreground">Session Info</h3>
                 </div>
-                <div className="bg-secondary rounded-md p-4 min-h-[400px] font-mono text-sm whitespace-pre-wrap text-foreground border border-border">
-                  {pdfToRender ? (
-                    <iframe height={500} width="100%" src={pdfToRender} className="rounded-md" />
-                  ) : (
-                    <div className="text-muted-foreground">No PDF available to preview.</div>
-                  )}
+                <div className="bg-secondary rounded-md p-4 min-h-[400px] font-mono text-sm text-foreground border border-border overflow-auto">
+                  <pre className="whitespace-pre-wrap text-xs">
+                    {JSON.stringify({
+                      documentName: session?.metadata?.documentName,
+                      documentType: session?.metadata?.documentType,
+                      language: session?.metadata?.language,
+                      numSolutions: session?.metadata?.numSolutions,
+                      groundTruthType: session?.metadata?.gt_type,
+                      status: session?.status,
+                      created: session?.created_at,
+                    }, null, 2)}
+                  </pre>
                 </div>
               </div>
             </div>
@@ -276,8 +311,8 @@ export default function Analytics() {
               <Button variant="outline" size="sm" onClick={resetReview}>
                 Review Again
               </Button>
-              <Button size="sm" onClick={handleSubmitReview}>
-                Submit Review
+              <Button size="sm" onClick={handleSubmitReview} disabled={isSubmitting}>
+                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Submit Review'}
               </Button>
             </div>
           </div>
