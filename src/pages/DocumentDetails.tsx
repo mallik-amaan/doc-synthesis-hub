@@ -7,7 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { PDFViewer } from '@/components/analytics/PDFViewer';
-import { getDownloadLink, getRedactionStatus, isRedactionApproved, pollRequestStatus, retryUpload, type RedactionStatusResponse } from '@/services/DocumentService';
+import { getDownloadLink, getRedactionStatus, isRedactionApproved, redactionRejected, pollRequestStatus, retryUpload, invalidateDocumentsCache, type RedactionStatusResponse } from '@/services/DocumentService';
 
 interface RedactedDocument {
   id: string;
@@ -120,31 +120,30 @@ export default function DocumentDetails() {
 
   const handleApprove = async () => {
     setIsApproving(true);
-    try{
+    try {
       const status = await isRedactionApproved(id);
-      if(status){
+      if (status) {
+        setRedactionStatus(prev => prev ? { ...prev, status: 'approved' } : prev);
         toast({
           title: 'Approved',
-          description: 'Document generation will continue.',
+          description: 'Document generation has started. You can track progress on this page.',
         });
       }
-    }
-    catch (err) {
+    } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to update request status';
-      setError(errorMsg);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: errorMsg,
-      });
-    }
-    finally{
+      toast({ variant: 'destructive', title: 'Error', description: errorMsg });
+    } finally {
       setIsApproving(false);
     }
-    navigate('/generated-docs');
   };
 
-  const handleReject = () => {
+  const handleReject = async () => {
+    try {
+      await redactionRejected(id);
+    } catch {
+      // best-effort — status update failure shouldn't block the redirect
+    }
+    invalidateDocumentsCache();
     toast({
       variant: 'destructive',
       title: 'Rejected',

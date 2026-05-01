@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Download, FileArchive, FileText, Calendar, Clock, MoreVertical, Eye, Trash2, Loader2 } from 'lucide-react';
+import { Download, FileText, Calendar, Clock, MoreVertical, Eye, Trash2, Loader2 } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { getDocumentsInfo, downloadGeneratedDocs, downloadGroundTruthFiles, deleteDocument, invalidateDocumentsCache } from '@/services/DocumentService';
+import { getDocumentsInfo, downloadGeneratedDocs, deleteDocument, invalidateDocumentsCache } from '@/services/DocumentService';
 
 export default function GeneratedDocs() {
   const navigate = useNavigate();
@@ -33,6 +33,7 @@ export default function GeneratedDocs() {
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -45,12 +46,10 @@ export default function GeneratedDocs() {
       .finally(() => setLoading(false));
   }, [location.state]);
 
-  const handleDownload = async (type: 'docs' | 'groundTruth', generationId: string) => {
+  const handleDownload = async (generationId: string) => {
+    setDownloadingId(generationId);
     try {
-      const url = type === 'docs'
-        ? await downloadGeneratedDocs(generationId)
-        : await downloadGroundTruthFiles(generationId);
-
+      const url = await downloadGeneratedDocs(generationId);
       const a = document.createElement('a');
       a.href = url;
       a.download = '';
@@ -58,10 +57,11 @@ export default function GeneratedDocs() {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-
-      toast({ title: 'Download started', description: 'Your file is being downloaded.' });
+      toast({ title: 'Download started', description: 'Your ZIP file is being downloaded.' });
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Download failed', description: err?.message || 'Could not retrieve download link.' });
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -170,26 +170,18 @@ export default function GeneratedDocs() {
                 <span className="badge-success">{generation.numDocs} docs</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 pt-3 border-t border-border">
+              <div className="pt-3 border-t border-border">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="gap-1.5 text-xs"
-                  onClick={() => handleDownload('docs', generation.id)}
+                  className="w-full gap-1.5 text-xs"
+                  disabled={downloadingId === String(generation.id)}
+                  onClick={() => handleDownload(String(generation.id))}
                 >
-                  <FileArchive className="h-3.5 w-3.5" />
-                  <span className="truncate">Generated Docs</span>
-                  <Download className="h-3.5 w-3.5 ml-auto" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 text-xs"
-                  onClick={() => handleDownload('groundTruth', generation.id)}
-                >
-                  <FileArchive className="h-3.5 w-3.5" />
-                  <span className="truncate">Ground Truth</span>
-                  <Download className="h-3.5 w-3.5 ml-auto" />
+                  {downloadingId === String(generation.id)
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <Download className="h-3.5 w-3.5" />}
+                  Download ZIP
                 </Button>
               </div>
             </div>
