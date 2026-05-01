@@ -35,20 +35,6 @@ export function invalidateDocumentsCache() {
   documentCache.invalidate();
 }
 
-export async function getDocumentBatch(batchId: string) {
-  const res = await fetch(`${BACKEND_URL}/docs/get-document-batch`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ batchId }),
-  });
-
-  if (!res.ok) {
-    throw new Error('Failed to fetch document batch');
-  }
-
-  const data = await res.json();
-  return data.batch;
-}
 
 export async function getDashboardStats(userId: string) {
     const res = await fetch(`${BACKEND_URL}/user/get-dashboard-stats`, {
