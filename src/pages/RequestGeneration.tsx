@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, Image, Trash2, Barcode, TriangleAlert } from 'lucide-react';
+import { Upload, Image, Trash2, Barcode, TriangleAlert, Layers, Lock, Star } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -27,7 +27,9 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
 import { startGenerationFlow, UploadProgressState } from '@/services/DocumentService';
+import { getUserUsage } from '@/services/UsageService';
 
 const languages = ['English', 'Spanish', 'French', 'German', 'Chinese', 'Japanese', 'Arabic'];
 const documentTypes = ['Research Paper', 'Technical Report', 'Legal Document', 'Medical Record', 'Financial Statement', 'General'];
@@ -45,6 +47,14 @@ export default function RequestGeneration() {
   const [activeTab, setActiveTab] = useState<'basic' | 'advanced'>('basic');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgressState | null>(null);
+
+  const { data: usageData } = useQuery({
+    queryKey: ['usage', user?.id],
+    queryFn: () => getUserUsage(user!.id),
+    enabled: !!user?.id,
+    staleTime: 60_000,
+  });
+  const isBasicPlan = (usageData?.plan?.name ?? 'basic') === 'basic';
 
   // Basic fields
   const [formData, setFormData] = useState({
@@ -71,10 +81,12 @@ export default function RequestGeneration() {
     dataset_export_format: 'msgpack',
     output_detail: 'dataset',
     barcodeEnabled: false,
-    barcodeNumber: '',  
+    barcodeNumber: '',
     enable_handwriting: false,
     handwriting_ratio: 0.2,
+    batch_processing: false,
   });
+  const [showBatchDialog, setShowBatchDialog] = useState(false);
 
   const [visualAssets, setVisualAssets] = useState<VisualAsset[]>([]);
   const [visualElementsEnabled, setVisualElementsEnabled] = useState(false);
@@ -288,12 +300,13 @@ export default function RequestGeneration() {
           <button
             type="button"
             onClick={() => setActiveTab('advanced')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1.5 ${
               activeTab === 'advanced'
                 ? 'bg-card text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
+            {isBasicPlan && <Lock className="h-3 w-3" />}
             Advanced Settings
           </button>
         </div>
@@ -406,10 +419,49 @@ export default function RequestGeneration() {
           </div>
 
           {/* === ADVANCED FIELDS === */}
-          {activeTab === 'advanced' && (
+          {activeTab === 'advanced' && isBasicPlan && (
+            <div className="border-t border-border pt-6 flex flex-col items-center text-center gap-4 py-10">
+              <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center">
+                <Lock className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-sm font-semibold text-foreground">Advanced settings require a paid plan</p>
+                <p className="text-xs text-muted-foreground max-w-xs">
+                  Unlock OCR control, batch processing, visual elements, barcode injection, and more with Pro or Max.
+                </p>
+              </div>
+              <Button type="button" onClick={() => navigate('/usage')} className="gap-2">
+                <Star className="h-4 w-4" />
+                Upgrade Plan
+              </Button>
+            </div>
+          )}
+
+          {activeTab === 'advanced' && !isBasicPlan && (
             <>
               <div className="border-t border-border pt-6">
                 <h3 className="text-sm font-semibold text-foreground mb-4">Advanced Configuration</h3>
+
+                {/* Batch Processing */}
+                <div className="flex items-center justify-between p-3 rounded-md border border-border mb-4 bg-primary/5">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <Layers className="h-4 w-4 text-primary" />
+                      <Label className="text-sm font-medium">Batch Processing</Label>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground pl-6">Reduces cost by ~30% — processing time increases</p>
+                  </div>
+                  <Switch
+                    checked={advancedData.batch_processing}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setShowBatchDialog(true);
+                      } else {
+                        setAdvancedData(prev => ({ ...prev, batch_processing: false }));
+                      }
+                    }}
+                  />
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
@@ -608,6 +660,45 @@ export default function RequestGeneration() {
           </div>
         </form>
       </div>
+      <AlertDialog open={showBatchDialog} onOpenChange={setShowBatchDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Layers className="h-5 w-5 text-primary" />
+              Batch Processing
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <p>Enabling batch processing groups your generation requests and processes them together, which provides the following benefits:</p>
+                <ul className="space-y-2">
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary font-bold mt-0.5">↓ 30%</span>
+                    <span>Lower generation cost — batch jobs use shared compute resources more efficiently.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-yellow-500 font-bold mt-0.5">↑</span>
+                    <span>Increased processing time — your documents may take longer to arrive compared to standard mode.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-500 font-bold mt-0.5">≈</span>
+                    <span>Reduced server load — requests are queued and processed in waves to manage resources efficiently.</span>
+                  </li>
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowBatchDialog(false)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              setAdvancedData(prev => ({ ...prev, batch_processing: true }));
+              setShowBatchDialog(false);
+            }}>
+              Enable Batch Processing
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={showVisualWarning} onOpenChange={setShowVisualWarning}>
         <AlertDialogContent>
           <AlertDialogHeader>

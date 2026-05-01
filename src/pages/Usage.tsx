@@ -153,6 +153,19 @@ export default function Usage() {
                 />
               </div>
 
+              {/* Batch processing note — Pro/Max only */}
+              {(data.plan.name === 'pro' || data.plan.name === 'max') && (
+                <div className="rounded-xl border border-border bg-card p-5 flex gap-3 items-start">
+                  <Star className="h-4 w-4 text-yellow-500 mt-0.5 shrink-0" />
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-medium text-foreground">Batch Processing Available</p>
+                    <p className="text-xs text-muted-foreground">
+                      Enable batch processing in Advanced Settings when generating documents to reduce generation cost by ~30%. Processing time increases but server load is managed more efficiently.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Plan comparison hint */}
               {data.plan.name === 'basic' && (
                 <button

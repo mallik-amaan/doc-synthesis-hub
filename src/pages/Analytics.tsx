@@ -122,7 +122,8 @@ export default function Analytics() {
       if (changedPairs.length > 0) {
         await Promise.all(changedPairs.map(p => flagDocumentPair(p.id, localFlagOverrides.get(p.id)!)));
       }
-      await submitDocumentReview(selectedSession, []);
+      const flaggedPairIds = pairs.filter(p => getFlag(p)).map(p => p.id);
+      await submitDocumentReview(selectedSession, flaggedPairIds);
       invalidateDocumentsCache();
       toast({
         title: 'Review submitted',
