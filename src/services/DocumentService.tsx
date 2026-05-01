@@ -30,24 +30,30 @@ export async function refreshDocumentsCache(userId: string) {
   return documentCache.refresh(userId, fetchDocumentsInfoFromAPI);
 }
 
-// Function to invalidate cache (call if you want to force next fetch)
+// Invalidate both the documents list cache and the stats cache in one call.
+// Call this wherever a write happens: delete, review submitted, new generation started.
 export function invalidateDocumentsCache() {
   documentCache.invalidate();
+  statsCache = null;
 }
 
+// --- Stats cache (cleared by invalidateDocumentsCache) ---
+interface StatsCache { data: any; userId: string; }
+let statsCache: StatsCache | null = null;
 
 export async function getDashboardStats(userId: string) {
-    const res = await fetch(`${BACKEND_URL}/user/get-dashboard-stats`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json',},
-        body: JSON.stringify({ id: userId }),
-    }); 
-    if (!res.ok) {
-        throw new Error('Failed to fetch dashboard stats');
-    }
+  if (statsCache?.userId === userId) return statsCache.data;
 
-    const data = await res.json();
-    return data;
+  const res = await fetch(`${BACKEND_URL}/user/get-dashboard-stats`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: userId }),
+  });
+  if (!res.ok) throw new Error('Failed to fetch dashboard stats');
+
+  const data = await res.json();
+  statsCache = { data, userId };
+  return data;
 }
 type CreateRequestResponse = {
   requestId: string;

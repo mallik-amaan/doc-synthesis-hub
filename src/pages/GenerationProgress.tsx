@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FileStack, CheckCircle2, Loader2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { invalidateDocumentsCache } from '@/services/DocumentService';
 
 const stages = [
   'Initializing synthesis engine...',
@@ -19,6 +20,12 @@ export default function GenerationProgress() {
   const [progress, setProgress] = useState(0);
   const [currentStage, setCurrentStage] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
+
+  useEffect(() => {
+    // A new request was just created — mark cached data stale so
+    // Dashboard and GeneratedDocs fetch fresh on their next visit.
+    invalidateDocumentsCache();
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {

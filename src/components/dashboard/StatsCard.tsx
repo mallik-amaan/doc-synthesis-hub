@@ -1,53 +1,51 @@
 import { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { useCountUp } from '@/hooks/useCountUp';
 
 interface StatsCardProps {
   title: string;
-  value: string | number;
+  value: string | number | undefined;
   icon: ReactNode;
-  trend?: {
-    value: number;
-    isPositive: boolean;
-  };
   variant?: 'default' | 'success' | 'warning' | 'destructive';
 }
 
-const variantStyles = {
-  default: 'text-primary',
-  success: 'text-success',
-  warning: 'text-warning',
-  destructive: 'text-destructive',
+const styles = {
+  default:     { text: 'text-primary',     iconBg: 'bg-primary/10',     accent: 'bg-primary' },
+  success:     { text: 'text-success',     iconBg: 'bg-success/10',     accent: 'bg-success' },
+  warning:     { text: 'text-warning',     iconBg: 'bg-warning/10',     accent: 'bg-warning' },
+  destructive: { text: 'text-destructive', iconBg: 'bg-destructive/10', accent: 'bg-destructive' },
 };
 
-const iconBgStyles = {
-  default: 'bg-primary/8',
-  success: 'bg-success/8',
-  warning: 'bg-warning/8',
-  destructive: 'bg-destructive/8',
-};
+export function StatsCard({ title, value, icon, variant = 'default' }: StatsCardProps) {
+  const s = styles[variant];
 
-export function StatsCard({ title, value, icon, trend, variant = 'default' }: StatsCardProps) {
+  const raw = typeof value === 'number' ? value : parseFloat(String(value ?? '0'));
+  const isPercent = String(value ?? '').includes('%');
+  const animated = useCountUp(isNaN(raw) ? 0 : raw);
+  const display = isNaN(raw) ? (value ?? '—') : isPercent ? `${animated}%` : animated;
+
   return (
-    <div className="stat-card">
-      <div className="flex items-start justify-between">
+    <div className={cn(
+      'stat-card relative overflow-hidden',
+      'transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 cursor-default',
+    )}>
+      {/* Colored top accent */}
+      <div className={cn('absolute top-0 left-0 right-0 h-[3px]', s.accent)} />
+
+      <div className="flex items-start justify-between pt-2">
         <div className="space-y-1.5">
-          <p className="text-sm text-muted-foreground">{title}</p>
-          <p className="text-2xl font-semibold text-foreground">{value}</p>
-          {trend && (
-            <p className={cn(
-              'text-xs font-medium flex items-center gap-1',
-              trend.isPositive ? 'text-success' : 'text-destructive'
-            )}>
-              {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}%
-              <span className="text-muted-foreground font-normal">vs last week</span>
-            </p>
-          )}
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+            {title}
+          </p>
+          <p className="text-4xl font-bold text-foreground tabular-nums leading-none">
+            {display}
+          </p>
         </div>
         <div className={cn(
-          'flex h-10 w-10 items-center justify-center rounded-lg',
-          iconBgStyles[variant],
+          'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl',
+          s.iconBg,
         )}>
-          <span className={variantStyles[variant]}>{icon}</span>
+          <span className={s.text}>{icon}</span>
         </div>
       </div>
     </div>

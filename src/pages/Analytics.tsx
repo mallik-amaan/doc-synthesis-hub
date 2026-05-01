@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { getDocumentsInfo, submitDocumentReview, getDocumentPairs, flagDocumentPair } from '@/services/DocumentService';
+import { getDocumentsInfo, submitDocumentReview, getDocumentPairs, flagDocumentPair, invalidateDocumentsCache } from '@/services/DocumentService';
 
 type DocumentPair = {
   id: string;
@@ -121,6 +121,7 @@ export default function Analytics() {
     setIsSubmitting(true);
     try {
       await submitDocumentReview(selectedSession, []);
+      invalidateDocumentsCache();
       toast({
         title: 'Review submitted',
         description: `${totalDocs - flaggedCount} valid, ${flaggedCount} flagged documents.`,
