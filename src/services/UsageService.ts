@@ -31,3 +31,14 @@ export async function getUserUsage(userId: string): Promise<UserUsage> {
   if (!data.result) throw new Error(data.message || 'Failed to fetch usage data');
   return data;
 }
+
+export async function createCheckoutSession(userId: string, planName: string): Promise<string> {
+  const res = await fetch(`${BACKEND_URL}/stripe/create-checkout-session`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, planName }),
+  });
+  if (!res.ok) throw new Error('Failed to create checkout session');
+  const data = await res.json();
+  return data.url;
+}

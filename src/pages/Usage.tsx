@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import { getUserUsage } from '@/services/UsageService';
 import { useAuth } from '@/contexts/AuthContext';
+import { PlansModal } from '@/components/PlansModal';
 import { FileText, Scissors, BarChart3, Zap, Star, Crown } from 'lucide-react';
 
 const PLAN_ICONS: Record<string, React.ReactNode> = {
@@ -60,6 +62,7 @@ function UsageBar({ label, icon, used, limit }: UsageBarProps) {
 
 export default function Usage() {
   const { user } = useAuth();
+  const [plansOpen, setPlansOpen] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['usage', user?.id],
@@ -116,11 +119,12 @@ export default function Usage() {
                   </p>
                   <p className="text-xs text-muted-foreground">Period started {periodStart}</p>
                 </div>
-                {data.plan.name !== 'max' && (
-                  <button className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors">
-                    Upgrade
-                  </button>
-                )}
+                <button
+                  onClick={() => setPlansOpen(true)}
+                  className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+                >
+                  {data.plan.name === 'max' ? 'View plans' : 'Upgrade'}
+                </button>
               </div>
 
               {/* Usage bars */}
@@ -151,7 +155,10 @@ export default function Usage() {
 
               {/* Plan comparison hint */}
               {data.plan.name === 'basic' && (
-                <div className="rounded-xl border border-border bg-card p-5 flex gap-4 items-start">
+                <button
+                  onClick={() => setPlansOpen(true)}
+                  className="w-full rounded-xl border border-border bg-card p-5 flex gap-4 items-start text-left hover:bg-muted/50 transition-colors"
+                >
                   <Star className="h-5 w-5 text-blue-500 mt-0.5 shrink-0" />
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-foreground">Upgrade to Pro</p>
@@ -159,11 +166,14 @@ export default function Usage() {
                       Get 15 generation requests, 15 redactions, and up to 100 documents for $10/mo.
                     </p>
                   </div>
-                </div>
+                </button>
               )}
 
               {data.plan.name === 'pro' && (
-                <div className="rounded-xl border border-border bg-card p-5 flex gap-4 items-start">
+                <button
+                  onClick={() => setPlansOpen(true)}
+                  className="w-full rounded-xl border border-border bg-card p-5 flex gap-4 items-start text-left hover:bg-muted/50 transition-colors"
+                >
                   <Crown className="h-5 w-5 text-purple-500 mt-0.5 shrink-0" />
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-foreground">Upgrade to Max</p>
@@ -171,7 +181,16 @@ export default function Usage() {
                       Get 80 generation requests, 80 redactions, and up to 300 documents for $50/mo.
                     </p>
                   </div>
-                </div>
+                </button>
+              )}
+
+              {data && (
+                <PlansModal
+                  open={plansOpen}
+                  onClose={() => setPlansOpen(false)}
+                  currentPlan={data.plan.name}
+                  userId={user!.id}
+                />
               )}
             </>
           )}

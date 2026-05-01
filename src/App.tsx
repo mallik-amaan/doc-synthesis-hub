@@ -20,6 +20,7 @@ import Redaction from "./pages/Redaction";
 import Settings from "./pages/Settings";
 import RequestGeneration from "./pages/RequestGeneration";
 import Usage from "./pages/Usage";
+import PaymentSuccess from "./pages/PaymentSuccess";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -48,6 +49,7 @@ const App = () => (
             <Route path="/request-generation" element={<RequestGeneration />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/usage" element={<Usage />} />
+            <Route path="/payment/success" element={<PaymentSuccess />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
