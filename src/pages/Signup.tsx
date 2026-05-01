@@ -42,15 +42,14 @@ export default function Signup() {
     }
 
     setIsLoading(true);
-    
+
     try {
       await signup(name, email, password);
       toast({
         title: 'Account created!',
-        description: 'Login using your Email and Password.',
+        description: 'Check your inbox for a verification code.',
       });
-      navigate('/login', { replace: true });
-
+      navigate(`/verify-otp?email=${encodeURIComponent(email)}&purpose=verify_email`);
     } catch (error) {
       toast({
         variant: 'destructive',

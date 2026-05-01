@@ -38,6 +38,7 @@ export default function Analytics() {
   const [loadingPairs, setLoadingPairs] = useState(false);
   const [gtContent, setGtContent] = useState<string | null>(null);
   const [loadingGt, setLoadingGt] = useState(false);
+  const [localFlagOverrides, setLocalFlagOverrides] = useState<Map<string, boolean>>(new Map());
 
   useEffect(() => {
     if (!user) return;
@@ -79,14 +80,18 @@ export default function Analytics() {
       .finally(() => setLoadingGt(false));
   }, [pairs, currentDocIndex]);
 
+  const getFlag = (pair: DocumentPair) =>
+    localFlagOverrides.has(pair.id) ? localFlagOverrides.get(pair.id)! : pair.flagged;
+
   const totalDocs = pairs.length;
-  const flaggedCount = pairs.filter(p => p.flagged).length;
+  const flaggedCount = pairs.filter(p => getFlag(p)).length;
   const currentPair = pairs[currentDocIndex] ?? null;
 
   const handleSelectSession = (value: string) => {
     setSelectedSession(value);
     setCurrentDocIndex(0);
     setIsReviewComplete(false);
+    setLocalFlagOverrides(new Map());
   };
 
   const handlePrevious = () => setCurrentDocIndex(prev => Math.max(0, prev - 1));
@@ -99,27 +104,24 @@ export default function Analytics() {
     }
   };
 
-  const handleFlag = async () => {
+  const handleFlag = () => {
     if (!currentPair) return;
-    const newFlagged = !currentPair.flagged;
-    try {
-      await flagDocumentPair(currentPair.id, newFlagged);
-      setPairs(prev => prev.map((p, i) =>
-        i === currentDocIndex ? { ...p, flagged: newFlagged } : p
-      ));
-      toast({
-        variant: newFlagged ? 'destructive' : 'default',
-        title: newFlagged ? 'Document flagged' : 'Flag removed',
-        description: `Document #${currentDocIndex + 1} ${newFlagged ? 'marked for review' : 'unflagged'}.`,
-      });
-    } catch {
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not update flag.' });
-    }
+    const newFlagged = !getFlag(currentPair);
+    setLocalFlagOverrides(prev => new Map(prev).set(currentPair.id, newFlagged));
+    toast({
+      variant: newFlagged ? 'destructive' : 'default',
+      title: newFlagged ? 'Document flagged' : 'Flag removed',
+      description: `Document #${currentDocIndex + 1} ${newFlagged ? 'marked for review' : 'unflagged'}.`,
+    });
   };
 
   const handleSubmitReview = async () => {
     setIsSubmitting(true);
     try {
+      const changedPairs = pairs.filter(p => localFlagOverrides.has(p.id));
+      if (changedPairs.length > 0) {
+        await Promise.all(changedPairs.map(p => flagDocumentPair(p.id, localFlagOverrides.get(p.id)!)));
+      }
       await submitDocumentReview(selectedSession, []);
       invalidateDocumentsCache();
       toast({
@@ -130,6 +132,7 @@ export default function Analytics() {
       setSelectedSession('');
       setCurrentDocIndex(0);
       setPairs([]);
+      setLocalFlagOverrides(new Map());
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Submission failed', description: err?.message || 'Could not submit review.' });
     } finally {
@@ -209,7 +212,7 @@ export default function Analytics() {
                 <span className="text-sm font-medium text-foreground">
                   {currentDocIndex + 1} / {totalDocs}
                 </span>
-                {currentPair?.flagged && <AlertCircle className="h-4 w-4 text-destructive" />}
+                {currentPair && getFlag(currentPair) && <AlertCircle className="h-4 w-4 text-destructive" />}
               </div>
               <Button variant="outline" size="sm" onClick={handleNext}>
                 {currentDocIndex === totalDocs - 1 ? 'Finish Review' : 'Next'}
@@ -258,13 +261,13 @@ export default function Analytics() {
 
             <div className="flex justify-center">
               <Button
-                variant={currentPair?.flagged ? 'destructive' : 'outline'}
+                variant={currentPair && getFlag(currentPair) ? 'destructive' : 'outline'}
                 size="sm"
                 onClick={handleFlag}
                 className="gap-1.5"
               >
                 <Flag className="h-4 w-4" />
-                {currentPair?.flagged ? 'Unflag Output' : 'Flag as Mismatch'}
+                {currentPair && getFlag(currentPair) ? 'Unflag Output' : 'Flag as Mismatch'}
               </Button>
             </div>
 
@@ -276,7 +279,7 @@ export default function Analytics() {
                   className={`h-2 w-2 rounded-full transition-all ${
                     index === currentDocIndex
                       ? 'bg-primary scale-125'
-                      : pair.flagged
+                      : getFlag(pair)
                         ? 'bg-destructive'
                         : 'bg-border hover:bg-muted-foreground/30'
                   }`}

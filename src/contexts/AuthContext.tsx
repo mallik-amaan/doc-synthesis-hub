@@ -13,8 +13,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   isGoogleConnected: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  signup: (name: string, email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<{ requiresVerification?: boolean } | void>;
+  signup: (name: string, email: string, password: string) => Promise<{ requiresVerification?: boolean } | void>;
   logout: () => void;
   getAPIKey: (userID: string) => Promise<string>;
   updateProfile: (username: string) => Promise<void>;
@@ -242,6 +242,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const result = data?.result;
     const success = result === true;
 
+    if (data?.requiresVerification) {
+      return { requiresVerification: true };
+    }
+
     if (!success) {
       const msg = data?.message || 'Login failed';
       const err: any = new Error(msg);
@@ -251,19 +255,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const returnedUser = data.user || data || null;
     const finalUser: User = returnedUser && returnedUser.email
-      ? { 
-          id: returnedUser.id ?? '0', 
-          email: returnedUser.email, 
-          name: returnedUser.username ?? returnedUser.email.split('@')[0], 
-          access_token: returnedUser.access_token || returnedUser.access || "", 
-          refresh_token: returnedUser.refresh_token || returnedUser.refresh || "" 
+      ? {
+          id: returnedUser.id ?? '0',
+          email: returnedUser.email,
+          name: returnedUser.username ?? returnedUser.email.split('@')[0],
+          access_token: returnedUser.access_token || returnedUser.access || "",
+          refresh_token: returnedUser.refresh_token || returnedUser.refresh || ""
         }
-      : { 
-          id: '0', 
-          email, 
-          name: email.split('@')[0], 
-          access_token: "", 
-          refresh_token: "" 
+      : {
+          id: '0',
+          email,
+          name: email.split('@')[0],
+          access_token: "",
+          refresh_token: ""
         };
 
     setUser(finalUser);
@@ -291,15 +295,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const data = await res.json().catch(() => ({}));
     const result = data?.result;
-    const success =
-      result === true
+    const success = result === true;
 
     if (!success) {
-      const msg = data?.message || 'Login failed';
+      const msg = data?.message || 'Signup failed';
       const err: any = new Error(msg);
-      // set a status so callers can distinguish (e.g. 401)
       err.status = 401;
       throw err;
+    }
+
+    if (data?.requiresVerification) {
+      return { requiresVerification: true };
     }
   };
 
