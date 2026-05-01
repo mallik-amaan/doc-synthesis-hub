@@ -386,7 +386,8 @@ export async function pollRequestStatus(
       }
 
       // Stop polling if terminal state is reached
-      if (status.status === 'completed' || status.status === 'failed' || status.status === 'completed_gdrive_failed') {
+      const terminalStates = ['completed', 'completed_gdrive_failed', 'failed', 'redacted'];
+      if (terminalStates.includes(status.status)) {
         clearInterval(pollInterval);
       }
     } catch (error) {
@@ -446,7 +447,10 @@ export async function startRedactionUpload(userId: string, fileName: string): Pr
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ userId, fileName }),
   });
-  if (!res.ok) throw new Error('Failed to create redaction request');
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.error || 'Failed to create redaction request');
+  }
   return res.json();
 }
 

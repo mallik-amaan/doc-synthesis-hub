@@ -11,9 +11,9 @@ export async function activeRequests(userId: string) {
     return [];
   }
 
-  // Filter documents where status is not 'completed'
+  // Filter documents where status is not 'completed', exclude standalone redactions
   const activeRequests = documents
-    .filter((doc: any) => doc.status !== 'completed')
+    .filter((doc: any) => doc.status !== 'completed' && doc.metadata?.request_type !== 'redaction_only')
     .sort((a: any, b: any) => {
       // Sort by created_at timestamp (most recent first)
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();

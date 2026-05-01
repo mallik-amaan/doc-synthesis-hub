@@ -13,6 +13,7 @@ import {
   submitRedactionRequest,
   uploadFileToSignedUrl,
   getRedactionHistory,
+  getRedactionStatus,
   pollRequestStatus,
   invalidateDocumentsCache,
 } from '@/services/DocumentService';
@@ -40,6 +41,7 @@ export default function Redaction() {
   const [error, setError]                 = useState<string | null>(null);
   const [history, setHistory]             = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
+  const [downloadingId, setDownloadingId]  = useState<string | null>(null);
 
   const fileInputRef    = useRef<HTMLInputElement>(null);
   const stopPollingRef  = useRef<(() => void) | null>(null);
@@ -106,7 +108,8 @@ export default function Redaction() {
       await submitRedactionRequest(requestId, storagePath);
       invalidateDocumentsCache();
 
-      // 4. Poll until done
+      // 4. Poll until done — assign stop fn before first tick via ref so
+      //    the callback can always call it even on the very first poll.
       const stop = await pollRequestStatus(
         requestId,
         (status) => {
@@ -131,6 +134,8 @@ export default function Redaction() {
         },
         3000
       );
+      // pollRequestStatus already clears the interval on terminal states,
+      // but keep the ref so the unmount cleanup and manual resets can stop it too.
       stopPollingRef.current = stop;
     } catch (err: any) {
       setError(err?.message || 'Something went wrong. Please try again.');
@@ -150,6 +155,22 @@ export default function Redaction() {
     setError(null);
     setStatusLabel('');
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleHistoryDownload = async (requestId: string) => {
+    setDownloadingId(requestId);
+    try {
+      const status = await getRedactionStatus(requestId);
+      if (status.files?.length) {
+        status.files.forEach((url) => window.open(url, '_blank', 'noopener,noreferrer'));
+      } else {
+        toast({ variant: 'destructive', title: 'No files found', description: 'Could not retrieve the redacted file.' });
+      }
+    } catch {
+      toast({ variant: 'destructive', title: 'Download failed', description: 'Could not fetch the redacted file. Please try again.' });
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   const formatDate = (d: string) =>
@@ -416,14 +437,30 @@ export default function Redaction() {
                       <p className="text-xs text-muted-foreground">{formatDate(req.created_at)}</p>
                     </div>
                   </div>
-                  <span className={`text-xs shrink-0 ml-2 ${
-                    req.status === 'redacted' ? 'badge-success' :
-                    req.status === 'failed'   ? 'badge-destructive' :
-                                                'badge-default'
-                  }`}>
-                    {req.status === 'redacted' ? 'Done' :
-                     req.status === 'failed'   ? 'Failed' : 'Processing'}
-                  </span>
+                  <div className="flex items-center gap-2 shrink-0 ml-2">
+                    <span className={`text-xs ${
+                      req.status === 'redacted' ? 'badge-success' :
+                      req.status === 'failed'   ? 'badge-destructive' :
+                                                  'badge-default'
+                    }`}>
+                      {req.status === 'redacted' ? 'Done' :
+                       req.status === 'failed'   ? 'Failed' : 'Processing'}
+                    </span>
+                    {req.status === 'redacted' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        disabled={downloadingId === req.id}
+                        onClick={() => handleHistoryDownload(req.id)}
+                        title="Download redacted PDF"
+                      >
+                        {downloadingId === req.id
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          : <Download className="h-3.5 w-3.5" />}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

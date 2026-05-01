@@ -41,6 +41,21 @@ const [loading, setLoading] = useState(true);
     fetchData();
   }, [user]);
 
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
+          <div className="w-64 space-y-3 text-center">
+            <p className="text-sm font-medium text-muted-foreground">Loading dashboard...</p>
+            <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+              <div className="h-full rounded-full bg-primary animate-[loading-bar_1.4s_ease-in-out_infinite]" />
+            </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-8">
