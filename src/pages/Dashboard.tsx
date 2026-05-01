@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, FileCheck, AlertTriangle, TrendingUp, Plus, Clock, CheckCircle2, XCircle, Eye } from 'lucide-react';
+import { FileText, FileCheck, AlertTriangle, Plus, Clock, CheckCircle2, XCircle, Eye, Loader2 } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { getDashboardStats } from '@/services/DocumentService';
+import { getDashboardStats, invalidateDocumentsCache } from '@/services/DocumentService';
 import { activeRequests, docTypeBreakdown } from '@/services/AnalyticsService';
 
 export default function Dashboard() {
@@ -22,6 +22,7 @@ const [loading, setLoading] = useState(true);
     const fetchData = async () => {
       try {
         setLoading(true);
+        invalidateDocumentsCache();
         const [dashboardStats, activeRequestsData, typeBreakdownData] = await Promise.all([
           getDashboardStats(user.id),
           activeRequests(user.id),
@@ -41,6 +42,17 @@ const [loading, setLoading] = useState(true);
     fetchData();
   }, [user]);
 
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+          <Loader2 className="h-10 w-10 text-primary animate-spin" />
+          <p className="text-sm text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-8">
@@ -52,7 +64,7 @@ const [loading, setLoading] = useState(true);
               Overview of your document synthesis activity
             </p>
           </div>
-          <Button 
+          <Button
             onClick={() => navigate('/request-generation')}
             className="gap-2"
           >
@@ -175,8 +187,6 @@ const [loading, setLoading] = useState(true);
           </div>
         </div>
       </div>
-
-      
     </DashboardLayout>
   );
 }

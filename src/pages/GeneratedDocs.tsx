@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Download, FileArchive, FileText, Calendar, Clock, MoreVertical, Eye, Trash2 } from 'lucide-react';
+import { Download, FileArchive, FileText, Calendar, Clock, MoreVertical, Eye, Trash2, Loader2 } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -10,9 +10,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { getDocumentsInfo, downloadGeneratedDocs, downloadGroundTruthFiles, deleteDocument, invalidateDocumentsCache } from '@/services/DocumentService';
-import { Skeleton } from '@/components/ui/skeleton';
 
 export default function GeneratedDocs() {
   const navigate = useNavigate();
@@ -22,6 +31,8 @@ export default function GeneratedDocs() {
   const [generations, setGenerations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -55,13 +66,16 @@ export default function GeneratedDocs() {
   };
 
   const handleDelete = async (generationId: string) => {
+    setDeletingId(generationId);
     try {
       await deleteDocument(generationId);
       invalidateDocumentsCache();
-      setGenerations(prev => prev.filter(g => g.id !== generationId));
+      setGenerations(prev => prev.filter(g => String(g.id) !== String(generationId)));
       toast({ title: 'Deleted', description: 'Document has been removed.' });
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Delete failed', description: err?.message || 'Could not delete document.' });
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -82,6 +96,17 @@ export default function GeneratedDocs() {
       minute: '2-digit',
     });
   };
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+          <Loader2 className="h-10 w-10 text-primary animate-spin" />
+          <p className="text-sm text-muted-foreground">Loading documents...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -119,8 +144,14 @@ export default function GeneratedDocs() {
                       <Eye className="h-4 w-4 mr-2" />
                       View Details
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(generation.id)}>
-                      <Trash2 className="h-4 w-4 mr-2" />
+                    <DropdownMenuItem
+                      className="text-destructive"
+                      disabled={deletingId === String(generation.id)}
+                      onClick={() => setConfirmDeleteId(String(generation.id))}
+                    >
+                      {deletingId === String(generation.id)
+                        ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        : <Trash2 className="h-4 w-4 mr-2" />}
                       Delete
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -165,35 +196,6 @@ export default function GeneratedDocs() {
           ))}
         </div>
 
-        {/* Loading State */}
-        {loading && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="stat-card">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <Skeleton className="h-10 w-10 rounded-lg" />
-                    <div>
-                      <Skeleton className="h-4 w-28 mb-1.5" />
-                      <Skeleton className="h-3 w-20" />
-                    </div>
-                  </div>
-                  <Skeleton className="h-8 w-8 rounded-md" />
-                </div>
-                <div className="flex items-center gap-3 mb-3">
-                  <Skeleton className="h-3 w-20" />
-                  <Skeleton className="h-3 w-14" />
-                  <Skeleton className="h-4 w-14 rounded-md" />
-                </div>
-                <div className="grid grid-cols-2 gap-2 pt-3 border-t border-border">
-                  <Skeleton className="h-9 w-full rounded-md" />
-                  <Skeleton className="h-9 w-full rounded-md" />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
         {/* Empty State */}
         {!loading && generations.length === 0 && (
           <div className="text-center py-16">
@@ -205,6 +207,31 @@ export default function GeneratedDocs() {
           </div>
         )}
       </div>
+
+      <AlertDialog open={!!confirmDeleteId} onOpenChange={(open) => { if (!open) setConfirmDeleteId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete document?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove the document and all associated files. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (confirmDeleteId) {
+                  handleDelete(confirmDeleteId);
+                  setConfirmDeleteId(null);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }

@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 
 
 export default function Settings() {
-  const { user, connectGoogleDrive, checkGoogleStatus, isGoogleConnected, changePassword, getAPIKey } = useAuth();
+  const { user, updateProfile, connectGoogleDrive, disconnectGoogleDrive, checkGoogleStatus, isGoogleConnected, changePassword, getAPIKey } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
@@ -81,13 +81,19 @@ export default function Settings() {
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.name.trim()) {
+      toast({ variant: 'destructive', title: 'Name required', description: 'Please enter a valid name.' });
+      return;
+    }
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    toast({
-      title: 'Profile updated',
-      description: 'Your profile has been successfully updated.',
-    });
-    setIsLoading(false);
+    try {
+      await updateProfile(formData.name.trim());
+      toast({ title: 'Profile updated', description: 'Your name has been successfully updated.' });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Update failed', description: err?.message || 'Could not update name.' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handlePasswordChange = async (e: React.FormEvent) => {
@@ -148,9 +154,14 @@ export default function Settings() {
 
   const handleDisconnectDrive = async () => {
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    toast({ title: 'Google Drive disconnected', description: 'Your Drive integration has been removed.' });
-    setIsLoading(false);
+    try {
+      await disconnectGoogleDrive();
+      toast({ title: 'Google Drive disconnected', description: 'Your Drive integration has been removed.' });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Disconnect failed', description: err?.message || 'Could not disconnect Google Drive.' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -198,10 +209,11 @@ export default function Settings() {
                     id="email"
                     type="email"
                     value={formData.email}
-                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                    className="pl-9"
+                    disabled
+                    className="pl-9 opacity-60 cursor-not-allowed"
                   />
                 </div>
+                <p className="text-xs text-muted-foreground">Email cannot be changed.</p>
               </div>
             </div>
             <Button type="submit" size="sm" disabled={isLoading}>

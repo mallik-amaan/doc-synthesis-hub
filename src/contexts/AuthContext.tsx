@@ -17,7 +17,9 @@ interface AuthContextType {
   signup: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   getAPIKey: (userID: string) => Promise<string>;
+  updateProfile: (username: string) => Promise<void>;
   connectGoogleDrive: () => Promise<void>;
+  disconnectGoogleDrive: () => Promise<void>;
   checkGoogleStatus: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
@@ -123,6 +125,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null;
     }
   };
+    const updateProfile = async (username: string) => {
+      if (!user) throw new Error('User not authenticated');
+      const BACKEND_URL = getBackendUrl();
+      const res = await fetch(`${BACKEND_URL}/auth/update-profile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: user.id, username }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.result) throw new Error(data.message || 'Failed to update name');
+      const updatedUser = { ...user, name: data.username };
+      setUser(updatedUser);
+      localStorage.setItem('fyp_user', JSON.stringify(updatedUser));
+    };
+
     const connectGoogleDrive = async () => {
       if (!user) throw new Error('User not authenticated');
       const BACKEND_URL = getBackendUrl();
@@ -143,6 +160,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
       throw new Error('Redirect URL not available from backend response');
+    };
+
+    const disconnectGoogleDrive = async () => {
+      if (!user) throw new Error('User not authenticated');
+      const BACKEND_URL = getBackendUrl();
+      const res = await fetch(`${BACKEND_URL}/oauth/google/disconnect`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.access_token}`,
+        },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || 'Failed to disconnect Google Drive');
+      setIsGoogleConnected(false);
     };
 
     const checkGoogleStatusForUser = async (targetUser: User) => {
@@ -354,7 +386,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, isGoogleConnected, login, signup, logout, getAPIKey, connectGoogleDrive, checkGoogleStatus, changePassword }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, isGoogleConnected, login, signup, logout, getAPIKey, updateProfile, connectGoogleDrive, disconnectGoogleDrive, checkGoogleStatus, changePassword }}>
       {children}
     </AuthContext.Provider>
   );
