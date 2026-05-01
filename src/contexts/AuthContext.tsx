@@ -30,41 +30,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isGoogleConnected, setIsGoogleConnected] = useState(false);
 
   useEffect(() => {
-    // Check for existing session and validate token
-    const initializeAuth = async () => {
-      const storedUser = localStorage.getItem('fyp_user');
-      if (storedUser) {
-        try {
-          const parsedUser = JSON.parse(storedUser);
-          // Validate the access token with backend
-          const isValid = await validateToken(parsedUser.access_token, parsedUser.id);
-          
-          if (isValid) {
-            setUser(parsedUser);
-            checkGoogleStatusForUser(parsedUser);
-          } else {
-            // Try to refresh the token
-            const refreshed = await refreshAccessToken(parsedUser.refresh_token, parsedUser.id);
-            if (refreshed) {
-              setUser(refreshed);
-              localStorage.setItem('fyp_user', JSON.stringify(refreshed));
-              checkGoogleStatusForUser(refreshed);
-            } else {
-              // Both token and refresh failed, clear session
-              localStorage.removeItem('fyp_user');
-              setUser(null);
-            }
-          }
-        } catch (error) {
-          console.error('Auth initialization error:', error);
+    // Restore session from localStorage synchronously — no network call.
+    // Token validity is enforced lazily: API calls return 401 when expired,
+    // at which point the caller should refresh or redirect to login.
+    const storedUser = localStorage.getItem('fyp_user');
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        if (parsedUser?.access_token && parsedUser?.id) {
+          setUser(parsedUser);
+        } else {
           localStorage.removeItem('fyp_user');
-          setUser(null);
         }
+      } catch {
+        localStorage.removeItem('fyp_user');
       }
-      setIsLoading(false);
-    };
-
-    initializeAuth();
+    }
+    setIsLoading(false);
   }, []);
 
   // Helper to resolve backend URL from env like before
@@ -164,18 +146,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const checkGoogleStatusForUser = async (targetUser: User) => {
+      console.log('[checkGoogleStatus] called with user id:', targetUser?.id, 'has token:', !!targetUser?.access_token);
       if (!targetUser?.access_token) return;
       try {
         const BACKEND_URL = getBackendUrl();
-        const res = await fetch(`${BACKEND_URL}/oauth/google/status`, {
-          headers: { 'Authorization': `Bearer ${targetUser.access_token}` },
+        let currentUser = targetUser;
+        let res = await fetch(`${BACKEND_URL}/oauth/google/status`, {
+          headers: { 'Authorization': `Bearer ${currentUser.access_token}` },
         });
+        console.log('[checkGoogleStatus] response status:', res.status);
+
+        // Access token expired — try refresh once before giving up
+        if ((res.status === 401 || res.status === 403) && currentUser.refresh_token) {
+          console.log('[checkGoogleStatus] token expired, attempting refresh');
+          const refreshed = await refreshAccessToken(currentUser.refresh_token, currentUser.id);
+          if (refreshed) {
+            setUser(refreshed);
+            localStorage.setItem('fyp_user', JSON.stringify(refreshed));
+            currentUser = refreshed;
+            res = await fetch(`${BACKEND_URL}/oauth/google/status`, {
+              headers: { 'Authorization': `Bearer ${currentUser.access_token}` },
+            });
+            console.log('[checkGoogleStatus] retry response status:', res.status);
+          }
+        }
+
         if (res.ok) {
           const data = await res.json();
+          console.log('[checkGoogleStatus] connected:', data.connected);
           setIsGoogleConnected(data.connected === true);
         }
       } catch (e) {
-        // status check failure is non-fatal
+        console.error('[checkGoogleStatus] error:', e);
       }
     };
 

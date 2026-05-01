@@ -4,7 +4,6 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
@@ -13,7 +12,6 @@ export default function Settings() {
   const { user, connectGoogleDrive, checkGoogleStatus, isGoogleConnected, changePassword, getAPIKey } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [driveEnabled, setDriveEnabled] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [apiKey, setApiKey] = useState('');
   
@@ -25,14 +23,21 @@ export default function Settings() {
     confirmPassword: '',
   });
 
+  // Show toast and clear param on OAuth redirect — runs once on mount
   useEffect(() => {
-    checkGoogleStatus();
     const params = new URLSearchParams(window.location.search);
     if (params.get('oauth') === 'success') {
       toast({ title: 'Google Drive connected', description: 'Your Drive has been successfully linked.' });
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
+
+  // Check Google status whenever the user becomes available (runs after AuthContext restores session)
+  useEffect(() => {
+    console.log('[Settings] user?.id effect fired, user:', user?.id);
+    if (!user) return;
+    checkGoogleStatus();
+  }, [user?.id]);
 
   useEffect(() => {
     const loadApiKey = async () => {
@@ -144,7 +149,6 @@ export default function Settings() {
   const handleDisconnectDrive = async () => {
     setIsLoading(true);
     await new Promise(resolve => setTimeout(resolve, 500));
-    setDriveEnabled(false);
     toast({ title: 'Google Drive disconnected', description: 'Your Drive integration has been removed.' });
     setIsLoading(false);
   };
@@ -334,25 +338,10 @@ export default function Settings() {
             </div>
 
             {isGoogleConnected && (
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-foreground">Enable Drive Uploads</p>
-                  <p className="text-xs text-muted-foreground">
-                    Allow uploading seed documents directly from Google Drive
-                  </p>
-                </div>
-                <Switch
-                  checked={driveEnabled}
-                  onCheckedChange={setDriveEnabled}
-                />
-              </div>
-            )}
-
-            {isGoogleConnected && driveEnabled && (
               <div className="flex items-center gap-2 p-2.5 rounded-md bg-success/8 text-success">
                 <Check className="h-4 w-4" />
                 <span className="text-xs font-medium">
-                  Drive uploads are enabled for document generation
+                  Generated documents will also be uploaded to your Google Drive
                 </span>
               </div>
             )}
