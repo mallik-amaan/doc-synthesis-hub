@@ -28,25 +28,35 @@ export default function Login() {
     try {
       const result = await login(email, password);
 
-      // login() may return requiresVerification for unverified accounts
-      if ((result as any)?.requiresVerification) {
+      if (result?.requiresVerification) {
         toast({
-          variant: 'destructive',
-          title: 'Email not verified',
-          description: 'Please verify your email before signing in.',
+          title: 'Verify your email',
+          description: 'Please check your inbox for a verification code.',
         });
         navigate(`/verify-otp?email=${encodeURIComponent(email)}&purpose=verify_email`);
         return;
       }
 
-      toast({ title: 'Welcome back!', description: 'You have successfully logged in.' });
+      toast({
+        title: 'Welcome back!',
+        description: 'You have successfully logged in.',
+      });
+
       navigate(redirectTo, { replace: true });
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Login failed',
-        description: error instanceof Error ? error.message : 'An error occurred while logging in.',
-      });
+      if (error?.status === 401) {
+        toast({
+          variant: 'destructive',
+          title: 'Login failed',
+          description: error instanceof Error ? error.message : 'An error occurred while logging in.',
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Login failed',
+          description: error instanceof Error ? error.message : 'An error occurred while logging in.',
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -112,12 +122,7 @@ export default function Login() {
             </div>
 
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-sm">Password</Label>
-                <Link to="/forgot-password" className="text-xs text-primary hover:underline">
-                  Forgot password?
-                </Link>
-              </div>
+              <Label htmlFor="password" className="text-sm">Password</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -143,6 +148,12 @@ export default function Login() {
               )}
             </Button>
           </form>
+
+          <p className="text-center text-sm text-muted-foreground">
+            <Link to="/forgot-password" className="font-medium text-primary hover:underline">
+              Forgot password?
+            </Link>
+          </p>
 
           <p className="text-center text-sm text-muted-foreground">
             Don't have an account?{' '}

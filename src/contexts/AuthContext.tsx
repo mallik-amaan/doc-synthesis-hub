@@ -238,6 +238,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const data = await res.json().catch(() => ({}));
 
+    if (data?.requiresVerification) {
+      return { requiresVerification: true };
+    }
+
     // Normalize server "result" (it may be boolean or string)
     const result = data?.result;
     const success = result === true;

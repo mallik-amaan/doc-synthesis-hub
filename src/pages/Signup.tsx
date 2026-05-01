@@ -42,14 +42,19 @@ export default function Signup() {
     }
 
     setIsLoading(true);
-
+    
     try {
-      await signup(name, email, password);
+      const result = await signup(name, email, password);
       toast({
         title: 'Account created!',
-        description: 'Check your inbox for a verification code.',
+        description: 'Please verify your email to continue.',
       });
-      navigate(`/verify-otp?email=${encodeURIComponent(email)}&purpose=verify_email`);
+      if (result?.requiresVerification) {
+        navigate(`/verify-otp?email=${encodeURIComponent(email)}&purpose=verify_email`, { replace: true });
+      } else {
+        navigate('/login', { replace: true });
+      }
+
     } catch (error) {
       toast({
         variant: 'destructive',
