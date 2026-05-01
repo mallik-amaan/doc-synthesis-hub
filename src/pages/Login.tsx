@@ -26,28 +26,27 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      await login(email, password);
+      const result = await login(email, password);
 
-      toast({
-        title: 'Welcome back!',
-        description: 'You have successfully logged in.',
-      });
+      // login() may return requiresVerification for unverified accounts
+      if ((result as any)?.requiresVerification) {
+        toast({
+          variant: 'destructive',
+          title: 'Email not verified',
+          description: 'Please verify your email before signing in.',
+        });
+        navigate(`/verify-otp?email=${encodeURIComponent(email)}&purpose=verify_email`);
+        return;
+      }
 
+      toast({ title: 'Welcome back!', description: 'You have successfully logged in.' });
       navigate(redirectTo, { replace: true });
     } catch (error: any) {
-      if (error?.status === 401) {
-        toast({
-          variant: 'destructive',
-          title: 'Login failed',
-          description: error instanceof Error ? error.message : 'An error occurred while logging in.',
-        });
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Login failed',
-          description: error instanceof Error ? error.message : 'An error occurred while logging in.',
-        });
-      }
+      toast({
+        variant: 'destructive',
+        title: 'Login failed',
+        description: error instanceof Error ? error.message : 'An error occurred while logging in.',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -113,7 +112,12 @@ export default function Login() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-sm">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-sm">Password</Label>
+                <Link to="/forgot-password" className="text-xs text-primary hover:underline">
+                  Forgot password?
+                </Link>
+              </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
