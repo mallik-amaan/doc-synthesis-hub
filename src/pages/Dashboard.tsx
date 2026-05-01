@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FileText, FileCheck, AlertTriangle, Plus, Clock,
-  CheckCircle2, XCircle, Eye, Loader2, ArrowRight,
+  CheckCircle2, XCircle, Eye, Loader2, ArrowRight, Scissors,
 } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { StatsCard } from '@/components/dashboard/StatsCard';
@@ -111,7 +111,7 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
           <StatsCard
             title="Total Requests"
             value={stats['generatedDocs']}
@@ -135,6 +135,12 @@ export default function Dashboard() {
             value={stats['successRatio']}
             icon={<CheckCircle2 className="h-5 w-5" />}
             variant="success"
+          />
+          <StatsCard
+            title="Redactions Done"
+            value={stats['redactionsCompleted'] ?? 0}
+            icon={<Scissors className="h-5 w-5" />}
+            variant="default"
           />
         </div>
 
