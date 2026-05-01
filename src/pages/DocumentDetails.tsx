@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Check, Circle, ArrowLeft, FileText, CheckCircle2, XCircle, Loader2, Download } from 'lucide-react';
+import { Check, Circle, ArrowLeft, FileText, CheckCircle2, XCircle, Loader2, Download, RefreshCw, AlertTriangle } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { PDFViewer } from '@/components/analytics/PDFViewer';
-import { getDownloadLink, getRedactionStatus, isRedactionApproved, pollRequestStatus, type RedactionStatusResponse } from '@/services/DocumentService';
+import { getDownloadLink, getRedactionStatus, isRedactionApproved, pollRequestStatus, retryUpload, type RedactionStatusResponse } from '@/services/DocumentService';
 
 interface RedactedDocument {
   id: string;
@@ -29,6 +29,7 @@ const STATUS_STEPS = [
   { value: 'validation', label: 'Validation' },
   { value: 'zipping', label: 'Zipping' },
   { value: 'uploading', label: 'Uploading' },
+  { value: 'completed_gdrive_failed', label: 'Drive Failed' },
   { value: 'completed', label: 'Completed' },
   { value: 'failed', label: 'Failed' },
 ];
@@ -41,6 +42,7 @@ export default function DocumentDetails() {
   const [redactedDocs, setRedactedDocs] = useState<RedactedDocument[]>([]);
   const [selectedPdfIndex, setSelectedPdfIndex] = useState(0);
   const [isApproving, setIsApproving] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -151,6 +153,21 @@ export default function DocumentDetails() {
     navigate('/generated-docs');
   };
 
+  const handleRetryUpload = async () => {
+    if (!id) return;
+    setIsRetrying(true);
+    try {
+      await retryUpload(id);
+      setRedactionStatus(prev => prev ? { ...prev, status: 'completed' } : prev);
+      toast({ title: 'Upload successful', description: 'Documents uploaded to Google Drive successfully.' });
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to retry upload';
+      toast({ variant: 'destructive', title: 'Retry failed', description: errorMsg });
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
   const handleDownload = async () => {
     if (!id) {
       toast({
@@ -251,6 +268,10 @@ export default function DocumentDetails() {
               <div className="h-7 w-7 rounded-md bg-destructive/10 flex items-center justify-center">
                 <XCircle className="h-4 w-4 text-destructive" />
               </div>
+            ) : redactionStatus?.status === 'completed_gdrive_failed' ? (
+              <div className="h-7 w-7 rounded-md bg-warning/10 flex items-center justify-center">
+                <AlertTriangle className="h-4 w-4 text-warning" />
+              </div>
             ) : (
               <div className="h-7 w-7 rounded-md border border-primary flex items-center justify-center">
                 <div className="h-2.5 w-2.5 rounded-full bg-primary animate-pulse" />
@@ -273,6 +294,7 @@ export default function DocumentDetails() {
                     'validation': 'Validating ground truth...',
                     'zipping': 'Creating ZIP archive...',
                     'uploading': 'Uploading to storage...',
+                    'completed_gdrive_failed': 'Generation completed but Google Drive upload failed — you can still download the ZIP or retry the upload',
                     'completed': 'Document generation completed successfully',
                     'failed': 'Process failed, please check the details'
                   }[redactionStatus?.status as string] || 'Processing...'
@@ -281,7 +303,7 @@ export default function DocumentDetails() {
             </div>
           </div>
 
-          {(['pending', 'redacting', 'generating', 'downloading', 'processing', 'ocr', 'handwriting', 'validation', 'zipping', 'uploading'] as const).includes(redactionStatus?.status as any) && (
+          {(['pending', 'redacting', 'generating', 'downloading', 'processing', 'ocr', 'handwriting', 'validation', 'zipping', 'uploading'] as const).includes(redactionStatus?.status as any) && !(['completed_gdrive_failed'] as const).includes(redactionStatus?.status as any) && (
             <div className="space-y-1.5 mt-4">
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Processing...</span>
@@ -292,14 +314,14 @@ export default function DocumentDetails() {
         </div>
 
         {/* Progress Steps Section */}
-        {redactionStatus && redactionStatus.status !== 'failed' && (
+        {redactionStatus && redactionStatus.status !== 'failed' && redactionStatus.status !== 'completed_gdrive_failed' && (
           <div className="stat-card">
             <h3 className="text-sm font-semibold text-foreground mb-4">Process Steps</h3>
             <div className="space-y-3">
               {/* Steps Timeline */}
               <div className="flex gap-1.5">
-                {STATUS_STEPS.filter(step => step.value !== 'failed').map((step, index) => {
-                  const currentIndex = STATUS_STEPS.filter(s => s.value !== 'failed').findIndex(s => s.value === redactionStatus?.status);
+                {STATUS_STEPS.filter(step => step.value !== 'failed' && step.value !== 'completed_gdrive_failed').map((step, index) => {
+                  const currentIndex = STATUS_STEPS.filter(s => s.value !== 'failed' && s.value !== 'completed_gdrive_failed').findIndex(s => s.value === redactionStatus?.status);
                   const isCompleted = index < currentIndex || (index === currentIndex && redactionStatus?.status === 'completed');
                   const isCurrent = index === currentIndex && redactionStatus?.status !== 'completed';
                   const isPending = index > currentIndex;
@@ -332,10 +354,10 @@ export default function DocumentDetails() {
               {/* Progress Bar */}
               <div className="mt-4">
                 <div className="flex gap-0.5 h-2 bg-muted rounded-full overflow-hidden">
-                  {STATUS_STEPS.filter(step => step.value !== 'failed').map((step, index) => {
-                    const currentIndex = STATUS_STEPS.filter(s => s.value !== 'failed').findIndex(s => s.value === redactionStatus?.status);
+                  {STATUS_STEPS.filter(step => step.value !== 'failed' && step.value !== 'completed_gdrive_failed').map((step, index) => {
+                    const currentIndex = STATUS_STEPS.filter(s => s.value !== 'failed' && s.value !== 'completed_gdrive_failed').findIndex(s => s.value === redactionStatus?.status);
                     const isCompleted = index <= currentIndex;
-                    const width = `${100 / STATUS_STEPS.filter(s => s.value !== 'failed').length}%`;
+                    const width = `${100 / STATUS_STEPS.filter(s => s.value !== 'failed' && s.value !== 'completed_gdrive_failed').length}%`;
 
                     return (
                       <div
@@ -412,7 +434,62 @@ export default function DocumentDetails() {
             </div>
           </div>
         )}
-        {isRedactionCompleted && redactedDocs.length > 0 ? 
+        {redactionStatus?.status === 'completed_gdrive_failed' && (
+          <div className="stat-card">
+            <h3 className="text-sm font-semibold text-foreground mb-4">Process Steps</h3>
+            <div className="space-y-3">
+              <div className="flex gap-1.5">
+                {STATUS_STEPS.filter(step => step.value !== 'failed').map((step, index) => {
+                  const isUploadFailed = step.value === 'completed_gdrive_failed';
+                  const isBeforeFailure = !isUploadFailed && STATUS_STEPS.filter(s => s.value !== 'failed').indexOf(step) < STATUS_STEPS.filter(s => s.value !== 'failed').findIndex(s => s.value === 'completed_gdrive_failed');
+
+                  return (
+                    <div key={step.value} className="flex flex-col items-center flex-1">
+                      <button
+                        className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-medium transition-all ${
+                          isUploadFailed
+                            ? 'bg-warning text-warning-foreground ring-2 ring-warning ring-offset-2 ring-offset-background'
+                            : isBeforeFailure
+                            ? 'bg-success text-success-foreground'
+                            : 'bg-muted text-muted-foreground'
+                        }`}
+                      >
+                        {isUploadFailed ? (
+                          <AlertTriangle className="h-4 w-4" />
+                        ) : isBeforeFailure ? (
+                          <Check className="h-4 w-4" />
+                        ) : (
+                          index + 1
+                        )}
+                      </button>
+                      <p className="text-[10px] text-muted-foreground mt-1.5 text-center leading-tight truncate w-full">
+                        {step.label}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-4">
+                <div className="flex gap-0.5 h-2 bg-muted rounded-full overflow-hidden">
+                  {STATUS_STEPS.filter(step => step.value !== 'failed').map((step) => {
+                    const filteredSteps = STATUS_STEPS.filter(s => s.value !== 'failed');
+                    const uploadFailedIndex = filteredSteps.findIndex(s => s.value === 'completed_gdrive_failed');
+                    const stepIndex = filteredSteps.indexOf(step);
+                    const isWarning = step.value === 'completed_gdrive_failed';
+                    const isSuccess = stepIndex < uploadFailedIndex;
+                    return (
+                      <div
+                        key={step.value}
+                        className={`flex-1 transition-colors ${isWarning ? 'bg-warning' : isSuccess ? 'bg-success' : 'bg-muted'}`}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {isRedactionCompleted && redactedDocs.length > 0 ?
         (
           <div className="stat-card">
             <div className="flex items-center gap-2 mb-4">
@@ -501,7 +578,7 @@ export default function DocumentDetails() {
         ) : redactionStatus.status==='approved' ? (
           <div className="stat-card">
             <h3 className="text-sm font-semibold text-foreground mb-3">Generated Documents</h3>
-            <div className="flex items-center gap-3 p -3 rounded-md bg-warning/8 border border-warning/20">
+            <div className="flex items-center gap-3 p-3 rounded-md bg-warning/8 border border-warning/20">
               <Loader2 className="h-4 w-4 animate-spin text-warning" />
               <div>
                 <p className="text-sm font-medium text-foreground">Generation in Progress</p>
@@ -532,6 +609,45 @@ export default function DocumentDetails() {
                 >
                   <Download className="h-4 w-4" />
                   Download Documents
+                </Button>
+              </div>
+            </div>
+          </div>
+        ):
+        redactionStatus.status==='completed_gdrive_failed' ? (
+          <div className="stat-card">
+            <h3 className="text-sm font-semibold text-foreground mb-3">Generated Documents</h3>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-3 rounded-md bg-warning/8 border border-warning/20">
+                <AlertTriangle className="h-4 w-4 text-warning" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-foreground">Google Drive Upload Failed</p>
+                  <p className="text-xs text-muted-foreground">
+                    Document generation completed successfully, but uploading to Google Drive failed.
+                    You can download the ZIP directly or retry the upload to Google Drive.
+                  </p>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleDownload}
+                  className="gap-1.5"
+                >
+                  <Download className="h-4 w-4" />
+                  Download ZIP
+                </Button>
+                <Button
+                  onClick={handleRetryUpload}
+                  disabled={isRetrying}
+                  className="gap-1.5"
+                >
+                  {isRetrying ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  {isRetrying ? 'Retrying...' : 'Retry Upload to Drive'}
                 </Button>
               </div>
             </div>

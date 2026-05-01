@@ -64,31 +64,27 @@ const [loading, setLoading] = useState(true);
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatsCard
-            title="Generated Docs"
+            title="Generation Requests"
             value={stats['generatedDocs']}
             icon={<FileCheck className="h-5 w-5" />}
-            trend={{ value: 12, isPositive: true }}
             variant="success"
           />
           <StatsCard
-            title="Requested Docs"
+            title="Docs Generated"
             value={stats['requestedDocs']}
             icon={<FileText className="h-5 w-5" />}
-            trend={{ value: 8, isPositive: true }}
             variant="default"
           />
           <StatsCard
             title="Flagged Docs"
             value={stats['flaggedDocs']}
             icon={<AlertTriangle className="h-5 w-5" />}
-            trend={{ value: 5, isPositive: false }}
             variant="warning"
           />
           <StatsCard
             title="Success Ratio"
             value={`${stats['successRatio']}`}
-            icon={<TrendingUp className="h-5 w-5" />}
-            trend={{ value: 2.3, isPositive: true }}
+            icon={<CheckCircle2 className="h-5 w-5" />}
             variant="success"
           />
         </div>

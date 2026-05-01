@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, Image, Trash2, Barcode } from 'lucide-react';
+import { Upload, Image, Trash2, Barcode, TriangleAlert } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { startGenerationFlow, UploadProgressState } from '@/services/DocumentService';
 
@@ -67,6 +77,11 @@ export default function RequestGeneration() {
   });
 
   const [visualAssets, setVisualAssets] = useState<VisualAsset[]>([]);
+  const [visualElementsEnabled, setVisualElementsEnabled] = useState(false);
+  const [showVisualWarning, setShowVisualWarning] = useState(false);
+  const [enabledTypes, setEnabledTypes] = useState<Record<typeof visualElementTypes[number], boolean>>({
+    stamp: false, logo: false, figure: false, photo: false,
+  });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -86,23 +101,33 @@ export default function RequestGeneration() {
     }));
   };
 
-  const handleVisualAssetsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      const newFiles = Array.from(files).map(file => ({
-        file,
-        elementType: 'logo' as typeof visualElementTypes[number],
-      }));
-      setVisualAssets(prev => [...prev, ...newFiles].slice(0, 10));
+  const toggleVisualElements = (enabled: boolean) => {
+    if (enabled) {
+      setShowVisualWarning(true);
+    } else {
+      setVisualElementsEnabled(false);
+      setVisualAssets([]);
+      setEnabledTypes({ stamp: false, logo: false, figure: false, photo: false });
     }
+  };
+
+  const toggleType = (type: typeof visualElementTypes[number], enabled: boolean) => {
+    setEnabledTypes(prev => ({ ...prev, [type]: enabled }));
+    if (!enabled) {
+      setVisualAssets(prev => prev.filter(a => a.elementType !== type));
+    }
+  };
+
+  const handleVisualAssetsByType = (type: typeof visualElementTypes[number], e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    const newFiles = Array.from(files).map(file => ({ file, elementType: type }));
+    setVisualAssets(prev => [...prev.filter(a => a.elementType !== type), ...newFiles].slice(0, 20));
+    e.target.value = '';
   };
 
   const removeVisualAsset = (index: number) => {
     setVisualAssets(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const updateVisualAssetType = (index: number, type: typeof visualElementTypes[number]) => {
-    setVisualAssets(prev => prev.map((a, i) => i === index ? { ...a, elementType: type } : a));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -118,10 +143,10 @@ export default function RequestGeneration() {
       return;
     }
 
-    // Validate barcode numbers in advanced mode
-    if (activeTab === 'advanced') {
-      if (advancedData.barcodeEnabled && !advancedData.barcodeNumber) {
-        toast({ variant: 'destructive', title: 'Missing barcode number', description: 'Please enter a barcode number.' });
+    // Validate barcode in advanced mode
+    if (activeTab === 'advanced' && advancedData.barcodeEnabled && advancedData.barcodeNumber) {
+      if (!/^\d{8,15}$/.test(String(advancedData.barcodeNumber))) {
+        toast({ variant: 'destructive', title: 'Invalid barcode number', description: 'Barcode must be 8–15 digits (numbers only).' });
         return;
       }
     }
@@ -130,7 +155,9 @@ export default function RequestGeneration() {
     setUploadProgress(null);
 
     try {
-      const visualFiles = activeTab === 'advanced' ? visualAssets.map(a => a.file) : [];
+      const visualFiles = activeTab === 'advanced'
+        ? visualAssets.map(a => ({ file: a.file, elementType: a.elementType }))
+        : [];
 
       const baseMetadata = {
         documentName: formData.documentName,
@@ -142,9 +169,21 @@ export default function RequestGeneration() {
         numSolutions: formData.numSolutions,
       };
 
+      const visualElementTypesList = activeTab === 'advanced'
+        ? [
+            ...(visualElementsEnabled
+              ? (Object.entries(enabledTypes) as [typeof visualElementTypes[number], boolean][])
+                  .filter(([, on]) => on)
+                  .map(([t]) => t)
+              : []),
+            ...(advancedData.barcodeEnabled ? ['barcode'] : []),
+          ]
+        : ['stamp', 'logo', 'figure', 'barcode', 'photo'];
+
       const metadata = {
         ...baseMetadata,
         ...advancedData,
+        visual_element_types: visualElementTypesList,
         ...(activeTab === 'advanced' && {
           visual_assets_metadata: visualAssets.map(a => ({
             fileName: a.file.name,
@@ -440,7 +479,7 @@ export default function RequestGeneration() {
 
                   {advancedData.barcodeEnabled && (
                     <div className="space-y-1.5">
-                      <Label htmlFor="barcodeNumber" className="text-sm">Barcode Number</Label>
+                      <Label htmlFor="barcodeNumber" className="text-sm">Barcode Number <span className="text-muted-foreground font-normal">(optional)</span></Label>
                       <div className="flex items-center gap-2">
                         <Barcode className="h-4 w-4 text-muted-foreground" />
                         <Input
@@ -450,6 +489,13 @@ export default function RequestGeneration() {
                           onChange={(e) => setAdvancedData(prev => ({ ...prev, barcodeNumber: e.target.value }))}
                         />
                       </div>
+                      {!advancedData.barcodeNumber ? (
+                        <p className="text-[11px] text-muted-foreground">A random barcode will be added to the document.</p>
+                      ) : !/^\d{8,15}$/.test(String(advancedData.barcodeNumber)) ? (
+                        <p className="text-[11px] text-destructive">Must be 8–15 digits (numbers only).</p>
+                      ) : (
+                        <p className="text-[11px] text-success">Valid barcode number.</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -481,54 +527,75 @@ export default function RequestGeneration() {
                   )}
                 </div>
               </div>
-{/** 
               <div className="border-t border-border pt-6">
-                <h3 className="text-sm font-semibold text-foreground mb-4">Visual Assets</h3>
-                <div className="border border-dashed border-border rounded-lg p-5 text-center hover:border-primary/40 transition-colors">
-                  <input id="visualAssets" type="file" onChange={handleVisualAssetsChange} className="hidden" accept="image/*" multiple />
-                  <label htmlFor="visualAssets" className="cursor-pointer">
-                    <Image className="h-6 w-6 mx-auto text-muted-foreground mb-1.5" />
-                    <p className="text-xs font-medium text-foreground">Upload logos, stamps, figures, barcodes, photos</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">PNG, JPG, SVG (max 10 files)</p>
-                  </label>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-foreground">Visual Elements</h3>
+                  <Switch checked={visualElementsEnabled} onCheckedChange={toggleVisualElements} />
                 </div>
 
-                {visualAssets.length > 0 && (
-                  <div className="space-y-3 mt-3">
-                    {visualAssets.map((asset, index) => (
-                      <div key={index} className="border border-border rounded-md p-3 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Image className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm font-medium truncate max-w-[200px]">{asset.file.name}</span>
+                {visualElementsEnabled && (
+                  <div className="space-y-3">
+                    {visualAssets.length === 0 && (
+                      <p className="text-[11px] text-muted-foreground pb-1">No files uploaded — default elements will be used for enabled types.</p>
+                    )}
+                    {visualElementTypes.map(type => (
+                      <div key={type} className="border border-border rounded-lg overflow-hidden">
+                        {/* Type header row */}
+                        <div className="flex items-center justify-between px-4 py-3 bg-accent/40">
+                          <span className="text-sm font-medium capitalize">{type}s</span>
+                          <Switch
+                            checked={enabledTypes[type]}
+                            onCheckedChange={(checked) => toggleType(type, checked)}
+                          />
+                        </div>
+
+                        {/* Upload zone — shown when type is enabled */}
+                        {enabledTypes[type] && (
+                          <div className="p-3 space-y-2">
+                            <div className="border border-dashed border-border rounded-md p-3 text-center hover:border-primary/40 transition-colors">
+                              <input
+                                id={`visual-${type}`}
+                                type="file"
+                                onChange={(e) => handleVisualAssetsByType(type, e)}
+                                className="hidden"
+                                accept="image/*"
+                                multiple
+                              />
+                              <label htmlFor={`visual-${type}`} className="cursor-pointer">
+                                <Image className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
+                                <p className="text-xs text-muted-foreground">Click to upload <span className="capitalize">{type}</span> images</p>
+                                <p className="text-[11px] text-muted-foreground/60 mt-0.5">PNG, JPG, SVG</p>
+                              </label>
+                            </div>
+
+                            {/* Uploaded files for this type */}
+                            {visualAssets.filter(a => a.elementType === type).length > 0 && (
+                              <div className="flex flex-wrap gap-1.5">
+                                {visualAssets
+                                  .map((asset, globalIndex) => ({ asset, globalIndex }))
+                                  .filter(({ asset }) => asset.elementType === type)
+                                  .map(({ asset, globalIndex }) => (
+                                    <div key={globalIndex} className="flex items-center gap-1.5 border border-border px-2 py-1 rounded-md text-xs">
+                                      <Image className="h-3 w-3 text-muted-foreground" />
+                                      <span className="max-w-[120px] truncate">{asset.file.name}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => removeVisualAsset(globalIndex)}
+                                        className="text-muted-foreground hover:text-destructive transition-colors"
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </button>
+                                    </div>
+                                  ))}
+                              </div>
+                            )}
                           </div>
-                          <button type="button" onClick={() => removeVisualAsset(index)} className="text-muted-foreground hover:text-destructive transition-colors">
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {visualElementTypes.map(type => (
-                            <button
-                              key={type}
-                              type="button"
-                              onClick={() => updateVisualAssetType(index, type)}
-                              className={`px-3 py-1 text-xs rounded-md border transition-colors capitalize ${
-                                asset.elementType === type
-                                  ? 'border-primary bg-primary/10 text-primary font-medium'
-                                  : 'border-border text-muted-foreground hover:border-primary/40'
-                              }`}
-                            >
-                              {type}
-                            </button>
-                          ))}
-                        </div>
+                        )}
                       </div>
                     ))}
                   </div>
                 )}
-                
               </div>
-*/}
             </>
           )}
 
@@ -541,6 +608,28 @@ export default function RequestGeneration() {
           </div>
         </form>
       </div>
+      <AlertDialog open={showVisualWarning} onOpenChange={setShowVisualWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <TriangleAlert className="h-5 w-5 text-amber-500" />
+              Visual Elements — Heads Up
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm leading-relaxed">
+              Turning this on does not guarantee every element will actually appear. The model only adds
+              stamps, logos, figures, or photos when it has a clear basis to, usually because your seed
+              document already contains that type of element, or because the document type you are
+              generating typically includes it. If neither is true, that element type gets skipped.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowVisualWarning(false)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setVisualElementsEnabled(true); setShowVisualWarning(false); }}>
+              I Understand, Enable
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }

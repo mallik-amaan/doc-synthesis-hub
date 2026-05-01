@@ -11,10 +11,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
-import { getDocumentsInfo } from '@/services/DocumentService';
+import { getDocumentsInfo, downloadGeneratedDocs, downloadGroundTruthFiles, deleteDocument, invalidateDocumentsCache } from '@/services/DocumentService';
 import { Skeleton } from '@/components/ui/skeleton';
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
 
 export default function GeneratedDocs() {
   const navigate = useNavigate();
@@ -36,11 +34,35 @@ export default function GeneratedDocs() {
       .finally(() => setLoading(false));
   }, [location.state]);
 
-  const handleDownload = (type: 'docs' | 'groundTruth', generationId: string) => {
-    toast({
-      title: 'Download started',
-      description: `Downloading ${type === 'docs' ? 'generated documents' : 'ground truth files'}...`,
-    });
+  const handleDownload = async (type: 'docs' | 'groundTruth', generationId: string) => {
+    try {
+      const url = type === 'docs'
+        ? await downloadGeneratedDocs(generationId)
+        : await downloadGroundTruthFiles(generationId);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '';
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      toast({ title: 'Download started', description: 'Your file is being downloaded.' });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Download failed', description: err?.message || 'Could not retrieve download link.' });
+    }
+  };
+
+  const handleDelete = async (generationId: string) => {
+    try {
+      await deleteDocument(generationId);
+      invalidateDocumentsCache();
+      setGenerations(prev => prev.filter(g => g.id !== generationId));
+      toast({ title: 'Deleted', description: 'Document has been removed.' });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Delete failed', description: err?.message || 'Could not delete document.' });
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -97,7 +119,7 @@ export default function GeneratedDocs() {
                       <Eye className="h-4 w-4 mr-2" />
                       View Details
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="text-destructive">
+                    <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(generation.id)}>
                       <Trash2 className="h-4 w-4 mr-2" />
                       Delete
                     </DropdownMenuItem>

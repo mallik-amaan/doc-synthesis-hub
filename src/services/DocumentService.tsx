@@ -79,6 +79,8 @@ type CreateRequestResponse = {
   };
 };
 
+export type VisualFileWithType = { file: File; elementType: string };
+
 export async function createRequestWithUploadUrls({
   userId,
   seedFiles,
@@ -87,14 +89,14 @@ export async function createRequestWithUploadUrls({
 }: {
   userId: string;
   seedFiles: File[];
-  visualFiles?: File[];
+  visualFiles?: VisualFileWithType[];
   metadata: Record<string, any>;
 }): Promise<CreateRequestResponse> {
 
   const body = {
     userId,
     seedFiles: seedFiles.map(f => f.name),
-    visualFiles: visualFiles.map(f => f.name),
+    visualFiles: visualFiles.map(f => ({ fileName: f.file.name, elementType: f.elementType })),
     metadata
   };
 
@@ -132,7 +134,7 @@ async function uploadFileToSignedUrl(file: File, uploadUrl: string) {
 export type StartGenerationParams = {
   userId: string;
   seedFiles: File[];
-  visualFiles: File[];
+  visualFiles: VisualFileWithType[];
   metadata: {
     documentName: string;
     groundTruth: string;
@@ -171,10 +173,11 @@ export async function startGenerationFlow(params: StartGenerationParams) {
   let uploadedCount = 0;
 
   // 2️⃣ Upload seed docs (MANDATORY)
+  const visualFilesForProgress = visualFiles.map(v => v.file);
   for (let i = 0; i < uploads.seedDocs.length; i++) {
     onUploadProgress?.({
       seedFiles,
-      visualFiles,
+      visualFiles: visualFilesForProgress,
       currentFileIndex: uploadedCount,
       totalFiles,
       currentFileName: seedFiles[i].name,
@@ -192,15 +195,15 @@ export async function startGenerationFlow(params: StartGenerationParams) {
   for (let i = 0; i < uploads.visualAssets.length; i++) {
     onUploadProgress?.({
       seedFiles,
-      visualFiles,
+      visualFiles: visualFilesForProgress,
       currentFileIndex: uploadedCount,
       totalFiles,
-      currentFileName: visualFiles[i].name,
+      currentFileName: visualFiles[i].file.name,
       phase: 'visual'
     });
 
     await uploadFileToSignedUrl(
-      visualFiles[i],
+      visualFiles[i].file,
       uploads.visualAssets[i].uploadUrl
     );
     uploadedCount++;
@@ -209,7 +212,7 @@ export async function startGenerationFlow(params: StartGenerationParams) {
   // 4️⃣ Notify backend uploads are complete
   onUploadProgress?.({
     seedFiles,
-    visualFiles,
+    visualFiles: visualFilesForProgress,
     currentFileIndex: uploadedCount,
     totalFiles,
     currentFileName: '',
@@ -227,7 +230,7 @@ export async function startGenerationFlow(params: StartGenerationParams) {
 
   onUploadProgress?.({
     seedFiles,
-    visualFiles,
+    visualFiles: visualFilesForProgress,
     currentFileIndex: totalFiles,
     totalFiles,
     currentFileName: '',
@@ -239,7 +242,7 @@ export async function startGenerationFlow(params: StartGenerationParams) {
 
 export type RedactionStatusResponse = {
   request_id: string;
-  status: 'pending' | 'processing' | 'redacting' | 'redacted' | 'completed' | 'failed' | 'approved';
+  status: 'pending' | 'approved' | 'processing' | 'generating' | 'downloading' | 'ocr' | 'handwriting' | 'validation' | 'zipping' | 'uploading' | 'redacting' | 'redacted' | 'completed' | 'completed_gdrive_failed' | 'failed';
   files?: string[];
   message?: string;
 };
@@ -295,6 +298,57 @@ export async function redactionRejected(requestId: string): Promise<boolean>{
   
 }
 
+export async function downloadGeneratedDocs(requestId: string): Promise<string> {
+  const res = await fetch(`${BACKEND_URL}/docs/download-generated-docs`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ docId: requestId }),
+  });
+
+  if (!res.ok) throw new Error('Failed to get download link');
+
+  const data = await res.json();
+  if (!data.success || !data.url) throw new Error('No download link available yet');
+
+  return data.url;
+}
+
+export async function downloadGroundTruthFiles(requestId: string): Promise<string> {
+  const res = await fetch(`${BACKEND_URL}/docs/download-gt-files`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ docId: requestId }),
+  });
+
+  if (!res.ok) throw new Error('Failed to get ground truth download link');
+
+  const data = await res.json();
+  if (!data.success || !data.url) throw new Error('No ground truth files available yet');
+
+  return data.url;
+}
+
+export async function deleteDocument(requestId: string): Promise<void> {
+  const res = await fetch(`${BACKEND_URL}/docs/delete-doc/${requestId}`, {
+    method: 'DELETE',
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Failed to delete document');
+  }
+}
+
+export async function submitDocumentReview(sessionId: string, flaggedIndices: number[]): Promise<void> {
+  const res = await fetch(`${BACKEND_URL}/analytics/submit-review`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId, flagged: flaggedIndices }),
+  });
+
+  if (!res.ok) throw new Error('Failed to submit review');
+}
+
 export async function getDownloadLink(requestId: string): Promise<string> {
   const res = await fetch(`${BACKEND_URL}/requests/${requestId}/get-download-link`, {
     method: 'POST',
@@ -340,7 +394,7 @@ export async function pollRequestStatus(
       }
 
       // Stop polling if terminal state is reached
-      if (status.status === 'completed' || status.status === 'failed') {
+      if (status.status === 'completed' || status.status === 'failed' || status.status === 'completed_gdrive_failed') {
         clearInterval(pollInterval);
       }
     } catch (error) {
@@ -352,4 +406,37 @@ export async function pollRequestStatus(
 
   // Return a function to stop polling manually
   return () => clearInterval(pollInterval);
+}
+
+export async function retryUpload(requestId: string): Promise<void> {
+  const res = await fetch(`${BACKEND_URL}/requests/${requestId}/retry-upload`, {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as any).error || 'Failed to retry upload');
+  }
+}
+
+export async function getDocumentPairs(requestId: string) {
+  const res = await fetch(`${BACKEND_URL}/analytics/pairs/${requestId}`);
+  if (!res.ok) throw new Error('Failed to fetch document pairs');
+  const data = await res.json();
+  return data.pairs as Array<{
+    id: string;
+    doc_index: number;
+    flagged: boolean;
+    flag_reason: string | null;
+    doc_url: string | null;
+    gt_url: string | null;
+  }>;
+}
+
+export async function flagDocumentPair(pairId: string, flagged: boolean, flag_reason?: string) {
+  const res = await fetch(`${BACKEND_URL}/analytics/pairs/${pairId}/flag`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ flagged, flag_reason }),
+  });
+  if (!res.ok) throw new Error('Failed to update flag');
 }

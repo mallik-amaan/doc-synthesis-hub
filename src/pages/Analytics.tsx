@@ -11,48 +11,85 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { getDocumentsInfo } from '@/services/DocumentService';
+import { getDocumentsInfo, submitDocumentReview, getDocumentPairs, flagDocumentPair } from '@/services/DocumentService';
+
+type DocumentPair = {
+  id: string;
+  doc_index: number;
+  flagged: boolean;
+  flag_reason: string | null;
+  doc_url: string | null;
+  gt_url: string | null;
+};
+
 export default function Analytics() {
   const { toast } = useToast();
   const { user } = useAuth();
+
   const [selectedSession, setSelectedSession] = useState<string>('');
   const [currentDocIndex, setCurrentDocIndex] = useState(0);
-  const [flaggedDocs, setFlaggedDocs] = useState<Set<number>>(new Set());
   const [isReviewComplete, setIsReviewComplete] = useState(false);
   const [sessions, setSessions] = useState<any[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [errorSessions, setErrorSessions] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [pairs, setPairs] = useState<DocumentPair[]>([]);
+  const [loadingPairs, setLoadingPairs] = useState(false);
+  const [gtContent, setGtContent] = useState<string | null>(null);
+  const [loadingGt, setLoadingGt] = useState(false);
 
   useEffect(() => {
     if (!user) return;
-    setLoadingSessions(true)
+    setLoadingSessions(true);
     getDocumentsInfo(user.id)
       .then(setSessions)
       .catch(err => setErrorSessions(err.message))
       .finally(() => setLoadingSessions(false));
-
   }, []);
 
-  function getDrivePreviewUrl(driveUrl) {
-    const regex = /\/d\/([a-zA-Z0-9_-]+)|id=([a-zA-Z0-9_-]+)/;
-    const match = driveUrl.match(regex);
-
-    if (!match) {
-      throw new Error("Invalid Google Drive URL");
+  useEffect(() => {
+    if (!selectedSession) {
+      setPairs([]);
+      setGtContent(null);
+      return;
     }
+    setLoadingPairs(true);
+    getDocumentPairs(selectedSession)
+      .then(setPairs)
+      .catch(() => setPairs([]))
+      .finally(() => setLoadingPairs(false));
+  }, [selectedSession]);
 
-    const fileId = match[1] || match[2];
-    return `https://drive.google.com/file/d/${fileId}/preview`;
-  }
+  useEffect(() => {
+    const pair = pairs[currentDocIndex];
+    if (!pair?.gt_url) { setGtContent(null); return; }
+    setLoadingGt(true);
+    setGtContent(null);
+    fetch(pair.gt_url)
+      .then(r => r.text())
+      .then(text => {
+        try {
+          setGtContent(JSON.stringify(JSON.parse(text), null, 2));
+        } catch {
+          setGtContent(text);
+        }
+      })
+      .catch(() => setGtContent(null))
+      .finally(() => setLoadingGt(false));
+  }, [pairs, currentDocIndex]);
 
-  const session = sessions.find(s => s.id === selectedSession);
-  const totalDocs = session?.metadata.numSolutions || 0;
-  const pdfToRender = "https://drive.google.com/file/d/1EzUn4OumAOyPtyfbEPNATVACq0su9gxd/preview"
+  const totalDocs = pairs.length;
+  const flaggedCount = pairs.filter(p => p.flagged).length;
+  const currentPair = pairs[currentDocIndex] ?? null;
 
-  const handlePrevious = () => {
-    setCurrentDocIndex(prev => Math.max(0, prev - 1));
+  const handleSelectSession = (value: string) => {
+    setSelectedSession(value);
+    setCurrentDocIndex(0);
+    setIsReviewComplete(false);
   };
+
+  const handlePrevious = () => setCurrentDocIndex(prev => Math.max(0, prev - 1));
 
   const handleNext = () => {
     if (currentDocIndex < totalDocs - 1) {
@@ -62,58 +99,57 @@ export default function Analytics() {
     }
   };
 
-  const handleFlag = () => {
-    setFlaggedDocs(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(currentDocIndex)) {
-        newSet.delete(currentDocIndex);
-        toast({
-          title: 'Flag removed',
-          description: `Document #${currentDocIndex + 1} unflagged.`,
-        });
-      } else {
-        newSet.add(currentDocIndex);
-        toast({
-          variant: 'destructive',
-          title: 'Document flagged',
-          description: `Document #${currentDocIndex + 1} marked for review.`,
-        });
-      }
-      return newSet;
-    });
+  const handleFlag = async () => {
+    if (!currentPair) return;
+    const newFlagged = !currentPair.flagged;
+    try {
+      await flagDocumentPair(currentPair.id, newFlagged);
+      setPairs(prev => prev.map((p, i) =>
+        i === currentDocIndex ? { ...p, flagged: newFlagged } : p
+      ));
+      toast({
+        variant: newFlagged ? 'destructive' : 'default',
+        title: newFlagged ? 'Document flagged' : 'Flag removed',
+        description: `Document #${currentDocIndex + 1} ${newFlagged ? 'marked for review' : 'unflagged'}.`,
+      });
+    } catch {
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not update flag.' });
+    }
   };
 
-  const handleSubmitReview = () => {
-    toast({
-      title: 'Review submitted',
-      description: `${totalDocs - flaggedDocs.size} valid, ${flaggedDocs.size} flagged documents.`,
-    });
-    setIsReviewComplete(false);
-    setSelectedSession('');
-    setCurrentDocIndex(0);
-    setFlaggedDocs(new Set());
+  const handleSubmitReview = async () => {
+    setIsSubmitting(true);
+    try {
+      await submitDocumentReview(selectedSession, []);
+      toast({
+        title: 'Review submitted',
+        description: `${totalDocs - flaggedCount} valid, ${flaggedCount} flagged documents.`,
+      });
+      setIsReviewComplete(false);
+      setSelectedSession('');
+      setCurrentDocIndex(0);
+      setPairs([]);
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Submission failed', description: err?.message || 'Could not submit review.' });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const resetReview = () => {
-    setIsReviewComplete(false);
-  };
+  const resetReview = () => setIsReviewComplete(false);
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Loading State */}
         {loadingSessions && (
           <div className="flex items-center justify-center min-h-screen">
             <div className="text-center space-y-4">
               <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-              <p className="text-center text-sm text-muted-foreground">
-                Loading sessions...
-              </p>
+              <p className="text-center text-sm text-muted-foreground">Loading sessions...</p>
             </div>
           </div>
         )}
 
-        {/* Header */}
         {!loadingSessions && (
           <div>
             <h1 className="text-3xl font-semibold text-foreground">Analytics & Review</h1>
@@ -123,7 +159,6 @@ export default function Analytics() {
           </div>
         )}
 
-        {/* Session Selector */}
         {!loadingSessions && (
           <div className="stat-card">
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
@@ -131,45 +166,42 @@ export default function Analytics() {
                 <label className="text-sm font-medium text-foreground mb-1.5 block">
                   Select Generation Session
                 </label>
-                <Select value={selectedSession} onValueChange={(value) => { 
-                  setSelectedSession(value);
-                  setCurrentDocIndex(0);
-                  setFlaggedDocs(new Set());
-                  setIsReviewComplete(false);
-                }}>
+                <Select value={selectedSession} onValueChange={handleSelectSession}>
                   <SelectTrigger className="w-full sm:w-72">
                     <SelectValue placeholder="Choose a session to review" />
                   </SelectTrigger>
                   <SelectContent className="bg-popover">
                     {sessions.map(session => (
                       <SelectItem key={session.id} value={session.id}>
-                        {session.metadata.documentName} ({session.numDocs} docs)
+                        {session.metadata?.documentName ?? session.id} ({session.metadata?.numSolutions ?? '?'} docs)
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              {selectedSession && (
+              {selectedSession && !loadingPairs && totalDocs > 0 && (
                 <div className="flex items-center gap-3 text-sm">
-                  <span className="badge-success">{totalDocs - flaggedDocs.size} Valid</span>
-                  <span className="badge-destructive">{flaggedDocs.size} Flagged</span>
+                  <span className="badge-success">{totalDocs - flaggedCount} Valid</span>
+                  <span className="badge-destructive">{flaggedCount} Flagged</span>
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {/* Review Interface */}
-        {!loadingSessions && selectedSession && !isReviewComplete && (
+        {!loadingSessions && selectedSession && loadingPairs && (
+          <div className="flex items-center justify-center py-16">
+            <div className="text-center space-y-2">
+              <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+              <p className="text-sm text-muted-foreground">Loading document pairs...</p>
+            </div>
+          </div>
+        )}
+
+        {!loadingSessions && selectedSession && !loadingPairs && !isReviewComplete && totalDocs > 0 && (
           <div className="space-y-4">
-            {/* Navigation */}
             <div className="flex items-center justify-between">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePrevious}
-                disabled={currentDocIndex === 0}
-              >
+              <Button variant="outline" size="sm" onClick={handlePrevious} disabled={currentDocIndex === 0}>
                 <ChevronLeft className="h-4 w-4 mr-1" />
                 Previous
               </Button>
@@ -178,31 +210,31 @@ export default function Analytics() {
                 <span className="text-sm font-medium text-foreground">
                   {currentDocIndex + 1} / {totalDocs}
                 </span>
-                {flaggedDocs.has(currentDocIndex) && (
-                  <AlertCircle className="h-4 w-4 text-destructive" />
-                )}
+                {currentPair?.flagged && <AlertCircle className="h-4 w-4 text-destructive" />}
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleNext}
-              >
+              <Button variant="outline" size="sm" onClick={handleNext}>
                 {currentDocIndex === totalDocs - 1 ? 'Finish Review' : 'Next'}
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             </div>
 
-            {/* Document Comparison */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className="review-panel">
                 <div className="flex items-center gap-2 mb-3">
                   <FileText className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-semibold text-foreground">Generated Document (PDF)</h3>
+                  <h3 className="text-sm font-semibold text-foreground">Generated Document</h3>
                 </div>
-                {pdfToRender ? (
-                  <iframe height={500} width="100%" src={pdfToRender} className="rounded-md border border-border" />
+                {currentPair?.doc_url ? (
+                  <iframe
+                    src={currentPair.doc_url}
+                    className="w-full h-[400px] rounded-md border border-border bg-secondary"
+                    title={`Generated document ${currentDocIndex + 1}`}
+                  />
                 ) : (
-                  <div className="text-sm text-muted-foreground">No PDF available to preview.</div>
+                  <div className="flex flex-col items-center justify-center h-[400px] rounded-md border border-border bg-secondary">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/40 mb-2" />
+                    <p className="text-xs text-muted-foreground">Loading document...</p>
+                  </div>
                 )}
               </div>
 
@@ -211,48 +243,50 @@ export default function Analytics() {
                   <Check className="h-4 w-4 text-success" />
                   <h3 className="text-sm font-semibold text-foreground">Ground Truth</h3>
                 </div>
-                <div className="bg-secondary rounded-md p-4 min-h-[400px] font-mono text-sm whitespace-pre-wrap text-foreground border border-border">
-                  {pdfToRender ? (
-                    <iframe height={500} width="100%" src={pdfToRender} className="rounded-md" />
+                <div className="bg-secondary rounded-md p-4 h-[400px] font-mono text-sm text-foreground border border-border overflow-auto">
+                  {loadingGt ? (
+                    <div className="flex items-center justify-center h-full">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/40" />
+                    </div>
+                  ) : gtContent ? (
+                    <pre className="whitespace-pre-wrap text-xs">{gtContent}</pre>
                   ) : (
-                    <div className="text-muted-foreground">No PDF available to preview.</div>
+                    <p className="text-xs text-muted-foreground">No ground truth available.</p>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Flag Button */}
             <div className="flex justify-center">
               <Button
-                variant={flaggedDocs.has(currentDocIndex) ? 'destructive' : 'outline'}
+                variant={currentPair?.flagged ? 'destructive' : 'outline'}
                 size="sm"
                 onClick={handleFlag}
                 className="gap-1.5"
               >
                 <Flag className="h-4 w-4" />
-                {flaggedDocs.has(currentDocIndex) ? 'Unflag Output' : 'Flag as Mismatch'}
+                {currentPair?.flagged ? 'Unflag Output' : 'Flag as Mismatch'}
               </Button>
             </div>
 
-            {/* Progress Dots */}
             <div className="flex justify-center gap-1 flex-wrap max-w-xl mx-auto">
-              {Array.from({ length: totalDocs }).map((_, index) => (
+              {pairs.map((pair, index) => (
                 <button
-                  key={index}
+                  key={pair.id}
                   onClick={() => setCurrentDocIndex(index)}
-                  className={`h-2 w-2 rounded-full transition-all ${index === currentDocIndex
+                  className={`h-2 w-2 rounded-full transition-all ${
+                    index === currentDocIndex
                       ? 'bg-primary scale-125'
-                      : flaggedDocs.has(index)
+                      : pair.flagged
                         ? 'bg-destructive'
                         : 'bg-border hover:bg-muted-foreground/30'
-                    }`}
+                  }`}
                 />
               ))}
             </div>
           </div>
         )}
 
-        {/* Review Summary */}
         {!loadingSessions && isReviewComplete && (
           <div className="stat-card text-center py-10">
             <Check className="h-12 w-12 text-success mx-auto mb-3" />
@@ -260,30 +294,25 @@ export default function Analytics() {
             <p className="text-sm text-muted-foreground mb-6">
               You've reviewed all {totalDocs} documents in this session.
             </p>
-
             <div className="flex justify-center gap-8 mb-6">
               <div className="text-center">
-                <p className="text-3xl font-semibold text-success">{totalDocs - flaggedDocs.size}</p>
+                <p className="text-3xl font-semibold text-success">{totalDocs - flaggedCount}</p>
                 <p className="text-xs text-muted-foreground">Valid Documents</p>
               </div>
               <div className="text-center">
-                <p className="text-3xl font-semibold text-destructive">{flaggedDocs.size}</p>
+                <p className="text-3xl font-semibold text-destructive">{flaggedCount}</p>
                 <p className="text-xs text-muted-foreground">Flagged Documents</p>
               </div>
             </div>
-
             <div className="flex justify-center gap-3">
-              <Button variant="outline" size="sm" onClick={resetReview}>
-                Review Again
-              </Button>
-              <Button size="sm" onClick={handleSubmitReview}>
-                Submit Review
+              <Button variant="outline" size="sm" onClick={resetReview}>Review Again</Button>
+              <Button size="sm" onClick={handleSubmitReview} disabled={isSubmitting}>
+                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Submit Review'}
               </Button>
             </div>
           </div>
         )}
 
-        {/* Empty State */}
         {!loadingSessions && !selectedSession && (
           <div className="text-center py-16">
             <FileText className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
