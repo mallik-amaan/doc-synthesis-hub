@@ -109,7 +109,7 @@ export async function createRequestWithUploadUrls({
   return res.json();
 }
 
-async function uploadFileToSignedUrl(file: File, uploadUrl: string) {
+export async function uploadFileToSignedUrl(file: File, uploadUrl: string) {
   const res = await fetch(uploadUrl, {
     method: 'PUT',
     headers: {
@@ -431,4 +431,36 @@ export async function flagDocumentPair(pairId: string, flagged: boolean, flag_re
     body: JSON.stringify({ flagged, flag_reason }),
   });
   if (!res.ok) throw new Error('Failed to update flag');
+}
+
+// ─── Standalone Redaction ─────────────────────────────────────────────────────
+
+export async function startRedactionUpload(userId: string, fileName: string): Promise<{
+  requestId: string;
+  uploadUrl: string;
+  storagePath: string;
+}> {
+  const res = await fetch(`${BACKEND_URL}/redaction/upload`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, fileName }),
+  });
+  if (!res.ok) throw new Error('Failed to create redaction request');
+  return res.json();
+}
+
+export async function submitRedactionRequest(requestId: string, storagePath: string): Promise<void> {
+  const res = await fetch(`${BACKEND_URL}/redaction/${requestId}/submit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ storagePath }),
+  });
+  if (!res.ok) throw new Error('Failed to start redaction');
+}
+
+export async function getRedactionHistory(userId: string): Promise<any[]> {
+  const res = await fetch(`${BACKEND_URL}/redaction/history/${userId}`);
+  if (!res.ok) throw new Error('Failed to fetch redaction history');
+  const data = await res.json();
+  return data.requests || [];
 }

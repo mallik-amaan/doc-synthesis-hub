@@ -9,17 +9,19 @@ import {
   FileStack,
   Sun,
   Moon,
+  Scissors,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 
 const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard',     path: '/dashboard' },
-  { icon: FilePlus,        label: 'New Request',   path: '/request-generation' },
+  { icon: LayoutDashboard, label: 'Dashboard',      path: '/dashboard' },
+  { icon: FilePlus,        label: 'New Request',    path: '/request-generation' },
   { icon: Files,           label: 'Generated Docs', path: '/generated-docs' },
-  { icon: BarChart3,       label: 'Analytics',     path: '/analytics' },
-  { icon: Settings,        label: 'Settings',      path: '/settings' },
+  { icon: Scissors,        label: 'Redaction',      path: '/redaction' },
+  { icon: BarChart3,       label: 'Analytics',      path: '/analytics' },
+  { icon: Settings,        label: 'Settings',       path: '/settings' },
 ];
 
 export function AppSidebar() {
