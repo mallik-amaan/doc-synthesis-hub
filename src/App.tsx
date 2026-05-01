@@ -19,6 +19,7 @@ import Analytics from "./pages/Analytics";
 import Redaction from "./pages/Redaction";
 import Settings from "./pages/Settings";
 import RequestGeneration from "./pages/RequestGeneration";
+import Usage from "./pages/Usage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -46,6 +47,7 @@ const App = () => (
             <Route path="/redaction" element={<Redaction />} />
             <Route path="/request-generation" element={<RequestGeneration />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/usage" element={<Usage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

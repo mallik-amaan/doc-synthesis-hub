@@ -6,7 +6,8 @@ import {
   BarChart3,
   LogOut,
   FileStack,
-  Scissors
+  Scissors,
+  Gauge
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,6 +18,7 @@ const navItems = [
   { icon: FileText, label: 'Generated Docs', path: '/generated-docs' },
   { icon: Scissors, label: 'Redaction', path: '/redaction' },
   { icon: BarChart3, label: 'Analytics', path: '/analytics' },
+  { icon: Gauge, label: 'Usage', path: '/usage' },
   { icon: Settings, label: 'Settings', path: '/settings' },
 ];
 
