@@ -41,7 +41,7 @@ export default function GeneratedDocs() {
     const fromGeneration = location.state?.fromGeneration;
     
     getDocumentsInfo(user.id, fromGeneration)
-      .then(data => setGenerations(data || []))
+      .then(data => setGenerations((data || []).filter((d: any) => d.metadata?.request_type !== 'redaction_only')))
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
   }, [location.state]);
