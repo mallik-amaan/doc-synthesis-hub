@@ -21,6 +21,7 @@ import Settings from "./pages/Settings";
 import RequestGeneration from "./pages/RequestGeneration";
 import Usage from "./pages/Usage";
 import PaymentSuccess from "./pages/PaymentSuccess";
+import AdvancedSettingsGuide from "./pages/AdvancedSettingsGuide";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,6 +51,7 @@ const App = () => (
             <Route path="/settings" element={<Settings />} />
             <Route path="/usage" element={<Usage />} />
             <Route path="/payment/success" element={<PaymentSuccess />} />
+            <Route path="/advanced-guide" element={<AdvancedSettingsGuide />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Upload, Image, Trash2, Barcode, TriangleAlert, Layers, Lock, Star } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Upload, Image, Trash2, Barcode, TriangleAlert, Layers, Lock, Star, ExternalLink } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
 import { Progress } from '@/components/ui/progress';
 import {
   Select,
@@ -32,6 +33,7 @@ import { startGenerationFlow, UploadProgressState } from '@/services/DocumentSer
 import { getUserUsage } from '@/services/UsageService';
 
 const languages = ['English', 'Spanish', 'French', 'German', 'Chinese', 'Japanese', 'Arabic'];
+const WRITER_IDS = [404, 347, 156, 253, 354, 166, 320];
 const documentTypes = ['Research Paper', 'Technical Report', 'Legal Document', 'Medical Record', 'Financial Statement', 'General'];
 const visualElementTypes = ['stamp', 'logo', 'figure', 'photo'] as const;
 
@@ -84,6 +86,10 @@ export default function RequestGeneration() {
     barcodeNumber: '',
     enable_handwriting: false,
     handwriting_ratio: 0.2,
+    handwriting_apply_ink_filter: true,
+    handwriting_enable_enhancements: false,
+    handwriting_num_inference_steps: 1000,
+    handwriting_writer_ids: [] as number[],
     batch_processing: false,
   });
   const [showBatchDialog, setShowBatchDialog] = useState(false);
@@ -552,10 +558,13 @@ export default function RequestGeneration() {
                   )}
                 </div>
 
-                {/* Handwriting Field */}
+                {/* Handwriting Section */}
                 <div className="border-t border-border pt-6 mt-6">
                   <div className="flex items-center justify-between p-3 rounded-md border border-border mb-4">
-                    <Label className="text-sm">Enable Handwriting</Label>
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Enable Handwriting</Label>
+                      <p className="text-[11px] text-muted-foreground">Converts tagged words into real ink images using a diffusion model</p>
+                    </div>
                     <Switch
                       checked={advancedData.enable_handwriting}
                       onCheckedChange={(checked) => setAdvancedData(prev => ({ ...prev, enable_handwriting: checked }))}
@@ -563,18 +572,146 @@ export default function RequestGeneration() {
                   </div>
 
                   {advancedData.enable_handwriting && (
-                    <div className="space-y-1.5">
-                      <Label htmlFor="handwritingRatio" className="text-sm">Handwriting Ratio</Label>
-                      <Input
-                        id="handwritingRatio"
-                        type="number"
-                        min="0"
-                        max="1"
-                        step="0.1"
-                        placeholder="0.3"
-                        value={advancedData.handwriting_ratio}
-                        onChange={(e) => setAdvancedData(prev => ({ ...prev, handwriting_ratio: parseFloat(e.target.value) || 0.3 }))}
-                      />
+                    <div className="space-y-5 pl-1">
+
+                      {/* Handwriting Intensity */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label className="text-sm font-medium">Handwriting Intensity</Label>
+                            <p className="text-[11px] text-muted-foreground">Percentage of LLM-tagged words actually converted to ink</p>
+                          </div>
+                          <span className="text-sm font-medium tabular-nums w-10 text-right">
+                            {Math.round(advancedData.handwriting_ratio * 100)}%
+                          </span>
+                        </div>
+                        <Slider
+                          min={0}
+                          max={1}
+                          step={0.05}
+                          value={[advancedData.handwriting_ratio]}
+                          onValueChange={([v]) => setAdvancedData(prev => ({ ...prev, handwriting_ratio: v }))}
+                        />
+                        <div className="flex justify-between text-[10px] text-muted-foreground">
+                          <span>0% — minimal ink</span>
+                          <span>100% — full ink</span>
+                        </div>
+                      </div>
+
+                      {/* Inference Quality */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label className="text-sm font-medium">Inference Quality</Label>
+                            <p className="text-[11px] text-muted-foreground">Higher steps = more natural strokes, slower generation</p>
+                          </div>
+                          <span className="text-sm font-medium tabular-nums w-16 text-right">
+                            {advancedData.handwriting_num_inference_steps} steps
+                          </span>
+                        </div>
+                        <Slider
+                          min={10}
+                          max={1000}
+                          step={10}
+                          value={[advancedData.handwriting_num_inference_steps]}
+                          onValueChange={([v]) => setAdvancedData(prev => ({ ...prev, handwriting_num_inference_steps: v }))}
+                        />
+                        <div className="flex gap-2 mt-1">
+                          <button
+                            type="button"
+                            onClick={() => setAdvancedData(prev => ({ ...prev, handwriting_num_inference_steps: 100 }))}
+                            className={`px-2.5 py-1 text-[11px] rounded-md border transition-colors ${
+                              advancedData.handwriting_num_inference_steps === 100
+                                ? 'border-primary bg-primary/10 text-primary font-medium'
+                                : 'border-border text-muted-foreground hover:text-foreground'
+                            }`}
+                          >
+                            Fast / Draft (100)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAdvancedData(prev => ({ ...prev, handwriting_num_inference_steps: 1000 }))}
+                            className={`px-2.5 py-1 text-[11px] rounded-md border transition-colors ${
+                              advancedData.handwriting_num_inference_steps === 1000
+                                ? 'border-primary bg-primary/10 text-primary font-medium'
+                                : 'border-border text-muted-foreground hover:text-foreground'
+                            }`}
+                          >
+                            Best / Final (1000)
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Sharp Edges + Bold Ink toggles */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="flex items-center justify-between p-3 rounded-md border border-border">
+                          <div className="space-y-0.5">
+                            <Label className="text-sm font-medium">Sharp Edges</Label>
+                            <p className="text-[11px] text-muted-foreground">Otsu binarization for crisp ink transparency</p>
+                          </div>
+                          <Switch
+                            checked={advancedData.handwriting_apply_ink_filter}
+                            onCheckedChange={(checked) => setAdvancedData(prev => ({ ...prev, handwriting_apply_ink_filter: checked }))}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between p-3 rounded-md border border-border">
+                          <div className="space-y-0.5">
+                            <Label className="text-sm font-medium">Bold Ink Mode</Label>
+                            <p className="text-[11px] text-muted-foreground">Sharpen &amp; boost contrast for darker strokes</p>
+                          </div>
+                          <Switch
+                            checked={advancedData.handwriting_enable_enhancements}
+                            onCheckedChange={(checked) => setAdvancedData(prev => ({ ...prev, handwriting_enable_enhancements: checked }))}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Writer Styles */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label className="text-sm font-medium">Writer Styles</Label>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              {advancedData.handwriting_writer_ids.length === 0
+                                ? 'No styles selected — all 7 styles will be used.'
+                                : `${advancedData.handwriting_writer_ids.length} style${advancedData.handwriting_writer_ids.length > 1 ? 's' : ''} selected.`}
+                            </p>
+                          </div>
+                          <Link
+                            to="/advanced-guide#writer-styles"
+                            target="_blank"
+                            className="flex items-center gap-1 text-[11px] text-primary hover:underline"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            View samples
+                          </Link>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {WRITER_IDS.map(id => {
+                            const selected = advancedData.handwriting_writer_ids.includes(id);
+                            return (
+                              <button
+                                key={id}
+                                type="button"
+                                onClick={() => setAdvancedData(prev => ({
+                                  ...prev,
+                                  handwriting_writer_ids: selected
+                                    ? prev.handwriting_writer_ids.filter(w => w !== id)
+                                    : [...prev.handwriting_writer_ids, id],
+                                }))}
+                                className={`px-3 py-1.5 text-xs rounded-full border font-medium transition-colors ${
+                                  selected
+                                    ? 'border-primary bg-primary/10 text-primary'
+                                    : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground/30'
+                                }`}
+                              >
+                                Style #{id}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
                     </div>
                   )}
                 </div>

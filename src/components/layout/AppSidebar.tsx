@@ -9,6 +9,7 @@ import {
   Eraser,
   Gauge,
   FilePlus2,
+  BookOpen,
   Sun,
   Moon,
 } from 'lucide-react';
@@ -23,6 +24,7 @@ const navItems = [
   { icon: Eraser, label: 'Redaction', path: '/redaction' },
   { icon: BarChart3, label: 'Analytics', path: '/analytics' },
   { icon: Gauge, label: 'Usage', path: '/usage' },
+  { icon: BookOpen, label: 'Settings Guide', path: '/advanced-guide' },
   { icon: Settings, label: 'Settings', path: '/settings' },
 ];
 
