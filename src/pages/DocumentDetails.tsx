@@ -257,7 +257,7 @@ export default function DocumentDetails() {
         <div className="stat-card">
           <h3 className="text-sm font-semibold text-foreground mb-3">Request Status</h3>
           <div className="flex items-center gap-3">
-            {(['completed', 'approved', 'redacted'] as const).includes(redactionStatus?.status as any) ? (
+            {(['completed', 'completed_no_gdrive', 'approved', 'redacted'] as const).includes(redactionStatus?.status as any) ? (
               <div className="h-7 w-7 rounded-md bg-success/10 flex items-center justify-center">
                 <CheckCircle2 className="h-4 w-4 text-success" />
               </div>
@@ -292,7 +292,8 @@ export default function DocumentDetails() {
                     'zipping': 'Creating ZIP archive...',
                     'uploading': 'Uploading to storage...',
                     'completed_gdrive_failed': 'Generation completed but Google Drive upload failed — you can still download the ZIP or retry the upload',
-                    'completed': 'Document generation completed successfully',
+                    'completed_no_gdrive': 'Document generation completed successfully',
+                    'completed': 'Document generation completed and uploaded to Google Drive successfully',
                     'failed': 'Process failed, please check the details'
                   }[redactionStatus?.status as string] || 'Processing...'
                 )}
@@ -318,9 +319,10 @@ export default function DocumentDetails() {
               {/* Steps Timeline */}
               <div className="flex gap-1.5">
                 {STATUS_STEPS.filter(step => step.value !== 'failed' && step.value !== 'completed_gdrive_failed').map((step, index) => {
-                  const currentIndex = STATUS_STEPS.filter(s => s.value !== 'failed' && s.value !== 'completed_gdrive_failed').findIndex(s => s.value === redactionStatus?.status);
-                  const isCompleted = index < currentIndex || (index === currentIndex && redactionStatus?.status === 'completed');
-                  const isCurrent = index === currentIndex && redactionStatus?.status !== 'completed';
+                  const normalizedStatus = redactionStatus?.status === 'completed_no_gdrive' ? 'completed' : redactionStatus?.status;
+                  const currentIndex = STATUS_STEPS.filter(s => s.value !== 'failed' && s.value !== 'completed_gdrive_failed').findIndex(s => s.value === normalizedStatus);
+                  const isCompleted = index < currentIndex || (index === currentIndex && normalizedStatus === 'completed');
+                  const isCurrent = index === currentIndex && normalizedStatus !== 'completed';
                   const isPending = index > currentIndex;
 
                   return (
@@ -352,7 +354,8 @@ export default function DocumentDetails() {
               <div className="mt-4">
                 <div className="flex gap-0.5 h-2 bg-muted rounded-full overflow-hidden">
                   {STATUS_STEPS.filter(step => step.value !== 'failed' && step.value !== 'completed_gdrive_failed').map((step, index) => {
-                    const currentIndex = STATUS_STEPS.filter(s => s.value !== 'failed' && s.value !== 'completed_gdrive_failed').findIndex(s => s.value === redactionStatus?.status);
+                    const normalizedStatus = redactionStatus?.status === 'completed_no_gdrive' ? 'completed' : redactionStatus?.status;
+                    const currentIndex = STATUS_STEPS.filter(s => s.value !== 'failed' && s.value !== 'completed_gdrive_failed').findIndex(s => s.value === normalizedStatus);
                     const isCompleted = index <= currentIndex;
                     const width = `${100 / STATUS_STEPS.filter(s => s.value !== 'failed' && s.value !== 'completed_gdrive_failed').length}%`;
 
@@ -586,7 +589,7 @@ export default function DocumentDetails() {
             </div>
           </div>
         ):
-        redactionStatus.status==='completed' ? (
+        (redactionStatus.status==='completed' || redactionStatus.status==='completed_no_gdrive') ? (
           <div className="stat-card">
             <h3 className="text-sm font-semibold text-foreground mb-3">Generated Documents</h3>
             <div className="space-y-4">
@@ -595,7 +598,9 @@ export default function DocumentDetails() {
                 <div className="flex-1">
                   <p className="text-sm font-medium text-foreground">Generation Completed</p>
                   <p className="text-xs text-muted-foreground">
-                    The generation process is completed. You can download the zip file by clicking the download button below.
+                    {redactionStatus.status === 'completed'
+                      ? 'Documents generated and uploaded to Google Drive successfully. You can also download the ZIP below.'
+                      : 'Documents generated successfully. You can download the ZIP file below.'}
                   </p>
                 </div>
               </div>
