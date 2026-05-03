@@ -81,7 +81,7 @@ export function AppSidebar() {
             </button>
           </div>
           <button
-            onClick={logout}
+            onClick={() => { logout(); window.location.replace('/login'); }}
             className="sidebar-link w-full text-destructive hover:bg-destructive/5 hover:text-destructive"
           >
             <LogOut className="h-4 w-4" />

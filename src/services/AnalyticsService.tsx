@@ -35,16 +35,20 @@ export async function activeRequests(userId: string) {
 }
 
 export async function docTypeBreakdown(userId: string) {
-  const documents = await getDocumentsInfo(userId);
-  
-  if (!documents || documents.length === 0) {
+  const allDocuments = await getDocumentsInfo(userId);
+
+  if (!allDocuments || allDocuments.length === 0) {
     return [];
   }
+
+  const documents = allDocuments.filter((doc: any) => doc.metadata?.request_type !== 'redaction_only');
+
+  if (documents.length === 0) return [];
 
   // Count document types
   const typeCounts: Record<string, number> = {};
   documents.forEach((doc: any) => {
-    const docType = doc.metadata.documentType || 'Unknown';
+    const docType = doc.metadata?.documentType || 'Unknown';
     typeCounts[docType] = (typeCounts[docType] || 0) + 1;
   });
 

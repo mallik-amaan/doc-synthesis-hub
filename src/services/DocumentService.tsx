@@ -331,14 +331,17 @@ export async function deleteDocument(requestId: string): Promise<void> {
   }
 }
 
-export async function submitDocumentReview(sessionId: string, flaggedIndices: number[]): Promise<void> {
+export async function submitDocumentReview(sessionId: string, flaggedIndices: string[]): Promise<void> {
   const res = await fetch(`${BACKEND_URL}/analytics/submit-review`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ sessionId, flagged: flaggedIndices }),
   });
 
-  if (!res.ok) throw new Error('Failed to submit review');
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body?.message || 'Failed to submit review');
+  }
 }
 
 export async function getDownloadLink(requestId: string): Promise<string> {
