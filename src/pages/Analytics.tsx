@@ -40,13 +40,17 @@ export default function Analytics() {
   const [loadingGt, setLoadingGt] = useState(false);
   const [localFlagOverrides, setLocalFlagOverrides] = useState<Map<string, boolean>>(new Map());
 
-  useEffect(() => {
+  const fetchSessions = () => {
     if (!user) return;
     setLoadingSessions(true);
-    getDocumentsInfo(user.id)
+    getDocumentsInfo(user.id, true)
       .then(docs => setSessions(docs.filter((d: any) => !['reviewed', 'flagged'].includes(d?.status ?? ''))))
       .catch(err => setErrorSessions(err.message))
       .finally(() => setLoadingSessions(false));
+  };
+
+  useEffect(() => {
+    fetchSessions();
   }, []);
 
   useEffect(() => {
@@ -134,6 +138,7 @@ export default function Analytics() {
       setCurrentDocIndex(0);
       setPairs([]);
       setLocalFlagOverrides(new Map());
+      fetchSessions();
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Submission failed', description: err?.message || 'Could not submit review.' });
     } finally {
