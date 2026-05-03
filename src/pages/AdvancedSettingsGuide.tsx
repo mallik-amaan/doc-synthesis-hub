@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Cpu, ScanText, Database, Layers, Barcode, Image, PenLine,
@@ -126,22 +126,6 @@ function HandwritingUseCaseTable() {
 
 export default function AdvancedSettingsGuide() {
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState('generation-core');
-  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
-  // Highlight active nav pill on scroll
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      entries => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) setActiveSection(entry.target.id);
-        });
-      },
-      { rootMargin: '-30% 0px -60% 0px' }
-    );
-    Object.values(sectionRefs.current).forEach(el => el && observer.observe(el));
-    return () => observer.disconnect();
-  }, []);
 
   // Scroll to hash on mount (e.g. /advanced-guide#writer-styles)
   useEffect(() => {
@@ -152,14 +136,6 @@ export default function AdvancedSettingsGuide() {
       }, 100);
     }
   }, []);
-
-  const scrollTo = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
-  const setRef = (id: string) => (el: HTMLDivElement | null) => {
-    sectionRefs.current[id] = el;
-  };
 
   return (
     <DashboardLayout>
@@ -178,28 +154,24 @@ export default function AdvancedSettingsGuide() {
           </div>
         </div>
 
-        {/* Sticky section nav */}
-        <div className="sticky top-0 z-10 -mx-1 px-1 pt-1 pb-2 bg-background/95 backdrop-blur border-b border-border">
-          <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
-            {SECTIONS.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => scrollTo(id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
-                  activeSection === id
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                }`}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {label}
-              </button>
-            ))}
-          </div>
+        {/* Quick-jump section grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+          {SECTIONS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              className="flex items-center gap-2.5 p-3 rounded-lg border border-border bg-card hover:border-primary/50 hover:bg-accent transition-colors text-left"
+            >
+              <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                <Icon className="h-3.5 w-3.5 text-primary" />
+              </div>
+              <span className="text-xs font-medium text-foreground">{label}</span>
+            </button>
+          ))}
         </div>
 
         {/* ── Section 1: Generation Core ── */}
-        <div id="generation-core" ref={setRef('generation-core')} className="stat-card scroll-mt-20">
+        <div id="generation-core" className="stat-card scroll-mt-20">
           <SectionHeader
             icon={Cpu}
             title="Generation Core"
@@ -217,7 +189,7 @@ export default function AdvancedSettingsGuide() {
         </div>
 
         {/* ── Section 2: OCR & Ground Truth ── */}
-        <div id="ocr-gt" ref={setRef('ocr-gt')} className="stat-card scroll-mt-20">
+        <div id="ocr-gt" className="stat-card scroll-mt-20">
           <SectionHeader
             icon={ScanText}
             title="OCR & Ground Truth"
@@ -237,7 +209,7 @@ export default function AdvancedSettingsGuide() {
         </div>
 
         {/* ── Section 3: Dataset Export ── */}
-        <div id="dataset-export" ref={setRef('dataset-export')} className="stat-card scroll-mt-20">
+        <div id="dataset-export" className="stat-card scroll-mt-20">
           <SectionHeader
             icon={Database}
             title="Dataset Export"
@@ -258,7 +230,7 @@ export default function AdvancedSettingsGuide() {
         </div>
 
         {/* ── Section 4: Batch Processing ── */}
-        <div id="batch" ref={setRef('batch')} className="stat-card scroll-mt-20">
+        <div id="batch" className="stat-card scroll-mt-20">
           <SectionHeader
             icon={Layers}
             title="Batch Processing"
@@ -275,7 +247,7 @@ export default function AdvancedSettingsGuide() {
         </div>
 
         {/* ── Section 5: Barcode ── */}
-        <div id="barcode" ref={setRef('barcode')} className="stat-card scroll-mt-20">
+        <div id="barcode" className="stat-card scroll-mt-20">
           <SectionHeader
             icon={Barcode}
             title="Barcode"
@@ -293,7 +265,7 @@ export default function AdvancedSettingsGuide() {
         </div>
 
         {/* ── Section 6: Visual Elements ── */}
-        <div id="visual-elements" ref={setRef('visual-elements')} className="stat-card scroll-mt-20">
+        <div id="visual-elements" className="stat-card scroll-mt-20">
           <SectionHeader
             icon={Image}
             title="Visual Elements"
@@ -315,7 +287,7 @@ export default function AdvancedSettingsGuide() {
         </div>
 
         {/* ── Section 7: Handwriting ── */}
-        <div id="handwriting" ref={setRef('handwriting')} className="stat-card scroll-mt-20">
+        <div id="handwriting" className="stat-card scroll-mt-20">
           <SectionHeader
             icon={PenLine}
             title="Handwriting"
