@@ -234,7 +234,7 @@ export async function startGenerationFlow(params: StartGenerationParams) {
 
 export type RedactionStatusResponse = {
   request_id: string;
-  status: 'pending' | 'approved' | 'processing' | 'generating' | 'downloading' | 'ocr' | 'handwriting' | 'validation' | 'zipping' | 'uploading' | 'redacting' | 'redacted' | 'completed' | 'completed_no_gdrive' | 'completed_gdrive_failed' | 'failed';
+  status: 'pending' | 'approved' | 'processing' | 'generating' | 'downloading' | 'ocr' | 'handwriting' | 'validation' | 'zipping' | 'uploading' | 'redacting' | 'redacted' | 'completed' | 'completed_no_gdrive' | 'completed_gdrive_failed' | 'reviewed' | 'flagged' | 'failed';
   files?: string[];
   message?: string;
 };
@@ -389,7 +389,7 @@ export async function pollRequestStatus(
       }
 
       // Stop polling if terminal state is reached
-      const terminalStates = ['completed', 'completed_no_gdrive', 'completed_gdrive_failed', 'failed', 'redacted'];
+      const terminalStates = ['completed', 'completed_no_gdrive', 'completed_gdrive_failed', 'reviewed', 'flagged', 'failed', 'redacted'];
       if (terminalStates.includes(status.status)) {
         clearInterval(pollInterval);
       }

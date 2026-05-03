@@ -44,7 +44,7 @@ export default function Analytics() {
     if (!user) return;
     setLoadingSessions(true);
     getDocumentsInfo(user.id)
-      .then(setSessions)
+      .then(docs => setSessions(docs.filter((d: any) => !['reviewed', 'flagged'].includes(d?.status ?? ''))))
       .catch(err => setErrorSessions(err.message))
       .finally(() => setLoadingSessions(false));
   }, []);

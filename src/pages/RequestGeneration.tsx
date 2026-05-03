@@ -402,11 +402,11 @@ export default function RequestGeneration() {
           <div className="space-y-1.5">
             <Label htmlFor="seedDocument" className="text-sm">Seed Documents Upload</Label>
             <div className="border border-dashed border-border rounded-lg p-5 text-center hover:border-primary/40 transition-colors">
-              <input id="seedDocument" type="file" onChange={handleFileChange} className="hidden" accept=".pdf,.doc,.docx,.txt" multiple />
+              <input id="seedDocument" type="file" onChange={handleFileChange} className="hidden" accept=".pdf" multiple />
               <label htmlFor="seedDocument" className="cursor-pointer">
                 <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-1.5" />
                 <p className="text-xs font-medium text-foreground">Click to upload or drag and drop</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">PDF, DOC, DOCX, TXT (max 10 files)</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">PDF only (max 10 files)</p>
               </label>
             </div>
             {formData.seedDocuments.length > 0 && (
